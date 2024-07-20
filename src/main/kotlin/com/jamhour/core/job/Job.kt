@@ -6,7 +6,7 @@ import com.jamhour.core.provider.JobsProvider
 import java.net.URI
 import java.time.LocalDate
 
-val jobComparator = Comparator.comparing<Job, String> {
+val jobComparator: Comparator<Job> = Comparator.comparing<Job, String> {
     it.jobsProvider
         .providerURI
         ?.toString() ?: ""
