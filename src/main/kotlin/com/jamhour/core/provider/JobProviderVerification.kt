@@ -1,4 +1,4 @@
-package com.jamhour.core.poster
+package com.jamhour.core.provider
 
 enum class JobProviderVerification {
     VERIFIED,

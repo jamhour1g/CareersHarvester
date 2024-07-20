@@ -1,6 +1,7 @@
 package com.jamhour.core.poster
 
 import com.jamhour.core.job.Job
+import com.jamhour.core.provider.JobProviderVerification
 import com.jamhour.core.provider.JobsProvider
 import java.net.URI
 import java.time.LocalDate
