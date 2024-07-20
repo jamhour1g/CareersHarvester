@@ -6,6 +6,8 @@ import com.jamhour.core.poster.JobPosterBusinessType
 import com.jamhour.core.poster.JobPosterContactInfo
 import com.jamhour.core.provider.JobProviderVerification
 import com.jamhour.core.provider.JobsProvider
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import java.net.URI
 import java.time.LocalDate
 
@@ -21,5 +23,5 @@ data class JobPosterImpl(
     override val posterProvider: JobsProvider,
     override val providerVerification: JobProviderVerification,
 ) : JobPoster {
-    override val allJobsFromPoster: List<Job> by lazy { getAllJobsFromProvider() }
+    override val cachedJobsFromPoster: Deferred<List<Job>> by lazy { async { getAllJobsFromProvider() } }
 }
