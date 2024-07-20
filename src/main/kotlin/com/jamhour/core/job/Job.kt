@@ -1,7 +1,6 @@
 package com.jamhour.core.job
 
 import com.jamhour.core.poster.JobPoster
-import com.jamhour.core.poster.JobPosterContactInfo
 import com.jamhour.core.provider.JobsProvider
 import java.net.URI
 import java.time.LocalDate
@@ -32,7 +31,6 @@ interface Job : Comparable<Job> {
     val jobDeadline: LocalDate?
     val typeOfVacancy: JobVacancyType
     val jobPoster: JobPoster
-    val jobPosterContactInfo: JobPosterContactInfo
     val jobsProvider: JobsProvider
     val jobURI: URI
 

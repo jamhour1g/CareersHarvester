@@ -3,7 +3,6 @@ package com.jamhour.core.job.impl
 import com.jamhour.core.job.Job
 import com.jamhour.core.job.JobVacancyType
 import com.jamhour.core.poster.JobPoster
-import com.jamhour.core.poster.JobPosterContactInfo
 import com.jamhour.core.provider.JobsProvider
 import java.net.URI
 import java.time.LocalDate
@@ -26,7 +25,6 @@ data class JobImpl(
     override val jobDeadline: LocalDate?,
     override val typeOfVacancy: JobVacancyType,
     override val jobPoster: JobPoster,
-    override val jobPosterContactInfo: JobPosterContactInfo,
     override val jobsProvider: JobsProvider,
     override val jobURI: URI,
 ) : Job
