@@ -16,15 +16,15 @@ interface JobPoster : Comparable<JobPoster> {
 
     val posterName: String
     val posterLocation: String
-    val posterWebsite: URI?
-    val posterEstablishmentDate: LocalDate?
     val allJobsFromPoster: List<Job>
     val businessType: JobPosterBusinessType
-    val posterContactInfo: JobPosterContactInfo
     val posterOverview: String
-    val posterUriOnProvider: URI?
     val posterProvider: JobsProvider
     val providerVerification: JobProviderVerification
+    val posterUriOnProvider: URI?
+    val posterWebsite: URI?
+    val posterEstablishmentDate: LocalDate?
+    val posterContactInfo: JobPosterContactInfo?
 
     override fun compareTo(other: JobPoster): Int {
         return jobPosterComparator.compare(this, other)

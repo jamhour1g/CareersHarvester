@@ -17,7 +17,7 @@ data class JobPosterImpl(
     override val posterEstablishmentDate: LocalDate?,
     override val allJobsFromPoster: List<Job>,
     override val businessType: JobPosterBusinessType,
-    override val posterContactInfo: JobPosterContactInfo,
+    override val posterContactInfo: JobPosterContactInfo?,
     override val posterOverview: String,
     override val posterUriOnProvider: URI?,
     override val posterProvider: JobsProvider,
