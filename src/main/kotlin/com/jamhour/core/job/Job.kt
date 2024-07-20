@@ -1,5 +1,6 @@
 package com.jamhour.core.job
 
+import com.jamhour.core.job.impl.JobBuilderImpl
 import com.jamhour.core.poster.JobPoster
 import com.jamhour.core.provider.JobsProvider
 import java.net.URI
@@ -36,5 +37,10 @@ interface Job : Comparable<Job> {
 
     override fun compareTo(other: Job): Int {
         return jobComparator.compare(this, other)
+    }
+
+    companion object {
+        @JvmStatic
+        fun builder() = JobBuilderImpl()
     }
 }
