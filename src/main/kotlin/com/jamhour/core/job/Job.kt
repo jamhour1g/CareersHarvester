@@ -6,6 +6,14 @@ import com.jamhour.core.provider.JobsProvider
 import java.net.URI
 import java.time.LocalDate
 
+val jobComparator = Comparator.comparing<Job, String> {
+    it.jobsProvider
+        .providerURI
+        ?.toString() ?: ""
+}.thenComparing(Job::jobTitle)
+    .thenComparing(Job::jobLocation)
+    .thenComparing(Job::jobDescription)
+
 interface Job : Comparable<Job> {
 
     val jobTitle: String
@@ -29,4 +37,7 @@ interface Job : Comparable<Job> {
     val jobURI: URI
     val jobBuilder: JobBuilder
 
+    override fun compareTo(other: Job): Int {
+        return jobComparator.compare(this, other)
+    }
 }
