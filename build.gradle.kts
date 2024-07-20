@@ -10,6 +10,8 @@ repositories {
 }
 
 dependencies {
+    val coroutinesVersion = "1.9.0-RC"
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
     testImplementation(kotlin("test"))
 }
 
