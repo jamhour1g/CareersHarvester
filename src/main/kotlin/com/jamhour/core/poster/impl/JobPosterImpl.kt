@@ -2,7 +2,6 @@ package com.jamhour.core.poster.impl
 
 import com.jamhour.core.job.Job
 import com.jamhour.core.poster.JobPoster
-import com.jamhour.core.poster.JobPosterBuilder
 import com.jamhour.core.poster.JobPosterBusinessType
 import com.jamhour.core.poster.JobPosterContactInfo
 import com.jamhour.core.provider.JobProviderVerification
@@ -23,5 +22,4 @@ data class JobPosterImpl(
     override val posterUriOnProvider: URI?,
     override val posterProvider: JobsProvider,
     override val providerVerification: JobProviderVerification,
-    override val jobPosterBuilder: JobPosterBuilder
 ) : JobPoster

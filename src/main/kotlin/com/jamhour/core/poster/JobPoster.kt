@@ -25,7 +25,6 @@ interface JobPoster : Comparable<JobPoster> {
     val posterUriOnProvider: URI?
     val posterProvider: JobsProvider
     val providerVerification: JobProviderVerification
-    val jobPosterBuilder: JobPosterBuilder
 
     override fun compareTo(other: JobPoster): Int {
         return jobPosterComparator.compare(this, other)
