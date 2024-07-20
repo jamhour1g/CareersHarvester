@@ -30,4 +30,9 @@ interface JobPoster : Comparable<JobPoster> {
         return jobPosterComparator.compare(this, other)
     }
 
+    fun getAllJobsFromProvider() = posterProvider.providerJobs
+        .asSequence()
+        .filter { it.jobPoster == this }
+        .toList()
+
 }
