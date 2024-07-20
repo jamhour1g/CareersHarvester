@@ -35,7 +35,6 @@ interface Job : Comparable<Job> {
     val jobPosterContactInfo: JobPosterContactInfo
     val jobsProvider: JobsProvider
     val jobURI: URI
-    val jobBuilder: JobBuilder
 
     override fun compareTo(other: Job): Int {
         return jobComparator.compare(this, other)
