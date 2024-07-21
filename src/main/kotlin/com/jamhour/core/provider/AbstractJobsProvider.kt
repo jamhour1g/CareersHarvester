@@ -1,8 +1,6 @@
-package com.jamhour.core.provider.impl
+package com.jamhour.core.provider
 
 import com.jamhour.core.job.Job
-import com.jamhour.core.provider.JobProviderStatus
-import com.jamhour.core.provider.JobsProvider
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import java.net.URI
