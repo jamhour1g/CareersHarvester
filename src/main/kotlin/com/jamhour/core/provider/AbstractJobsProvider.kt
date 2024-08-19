@@ -3,13 +3,10 @@ package com.jamhour.core.provider
 import com.jamhour.core.job.Job
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
-import java.net.URI
 import java.util.Objects
 
 abstract class AbstractJobsProvider(
     override val providerName: String,
-    override val providerDescription: String,
-    override val providerURI: URI?,
 ) : JobsProvider {
     override val cachedJobs: Deferred<List<Job>> by lazy { async { getJobs() } }
 

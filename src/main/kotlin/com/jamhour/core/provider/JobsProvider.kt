@@ -15,13 +15,12 @@ val providerComparator: Comparator<JobsProvider> =
 interface JobsProvider : Comparable<JobsProvider>, CoroutineScope {
 
     val providerName: String
-    val providerDescription: String
-    val providerURI: URI?
     val cachedJobs: Deferred<List<Job>>
 
-    override val coroutineContext: CoroutineContext
-        get() = Dispatchers.Default + kotlinx.coroutines.Job()
+    val providerDescription: String get() = ""
+    val providerURI: URI? get() = null
 
+    override val coroutineContext: CoroutineContext get() = Dispatchers.Default + kotlinx.coroutines.Job()
     override fun compareTo(other: JobsProvider) = providerComparator.compare(this, other)
 
     fun getProviderStatus(): JobProviderStatus
