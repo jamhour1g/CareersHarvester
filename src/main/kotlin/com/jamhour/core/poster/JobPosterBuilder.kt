@@ -1,5 +1,6 @@
 package com.jamhour.core.poster
 
+import com.jamhour.core.poster.impl.JobPosterBuilderImpl
 import com.jamhour.core.provider.JobProviderVerification
 import com.jamhour.core.provider.JobsProvider
 import java.net.URI
@@ -7,16 +8,23 @@ import java.time.LocalDate
 
 interface JobPosterBuilder {
 
-    fun name(name: String): JobPosterBuilder
-    fun location(location: String): JobPosterBuilder
-    fun website(website: URI): JobPosterBuilder
-    fun establishmentDate(establishmentDate: LocalDate): JobPosterBuilder
-    fun businessType(businessType: JobPosterBusinessType): JobPosterBuilder
-    fun contactInfo(contactInfo: JobPosterContactInfo): JobPosterBuilder
-    fun overview(overview: String): JobPosterBuilder
-    fun uriOnProvider(uriOnProvider: URI): JobPosterBuilder
-    fun provider(provider: JobsProvider): JobPosterBuilder
-    fun verification(verification: JobProviderVerification): JobPosterBuilder
+    val provider: JobsProvider
+
+    var name: String
+    var location: String
+    var overview: String
+    var businessType: JobPosterBusinessType
+    var verification: JobProviderVerification
+    var website: URI?
+    var establishmentDate: LocalDate?
+    var contactInfo: JobPosterContactInfo?
+    var uriOnProvider: URI?
+
     fun build(): JobPoster
 
 }
+
+fun buildJobPoster(
+    provider: JobsProvider,
+    builderAction: JobPosterBuilder.() -> Unit
+): JobPoster = JobPosterBuilderImpl(provider).apply(builderAction).build()

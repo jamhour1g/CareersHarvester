@@ -1,7 +1,6 @@
 package com.jamhour.core.poster
 
 import com.jamhour.core.job.Job
-import com.jamhour.core.poster.impl.JobPosterBuilderImpl
 import com.jamhour.core.provider.JobProviderVerification
 import com.jamhour.core.provider.JobsProvider
 import kotlinx.coroutines.CoroutineScope
@@ -37,9 +36,5 @@ interface JobPoster : Comparable<JobPoster>, CoroutineScope {
         .asSequence()
         .filter { it.jobPoster == this }
         .toList()
-
-    companion object {
-        fun builder() = JobPosterBuilderImpl()
-    }
 
 }

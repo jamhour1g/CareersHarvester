@@ -1,6 +1,5 @@
 package com.jamhour.core.job
 
-import com.jamhour.core.job.impl.JobBuilderImpl
 import com.jamhour.core.poster.JobPoster
 import java.net.URI
 import java.time.LocalDate
@@ -34,8 +33,4 @@ interface Job : Comparable<Job> {
     override fun compareTo(other: Job) = jobComparator.compare(this, other)
     fun getJobProvider() = jobPoster.posterProvider
 
-    companion object {
-        @JvmStatic
-        fun builder() = JobBuilderImpl()
-    }
 }

@@ -1,28 +1,37 @@
 package com.jamhour.core.job
 
+import com.jamhour.core.job.impl.JobBuilderImpl
 import com.jamhour.core.poster.JobPoster
 import java.net.URI
 import java.time.LocalDate
 
 interface JobBuilder {
 
-    fun title(title: String): JobBuilder
-    fun location(location: String): JobBuilder
-    fun description(description: String): JobBuilder
-    fun responsibilities(responsibilities: String): JobBuilder
-    fun qualifications(qualifications: String): JobBuilder
-    fun preksAndBenefits(preksAndBenefits: String): JobBuilder
-    fun instructionsOnHowToApply(instructionsOnHowToApply: String): JobBuilder
-    fun typeOfVacancy(typeOfVacancy: JobVacancyType): JobBuilder
-    fun poster(poster: JobPoster): JobBuilder
-    fun requirements(requirements: String): JobBuilder
-    fun positionLevel(positionLevel: String): JobBuilder
-    fun salary(salary: String): JobBuilder
-    fun experience(experience: String): JobBuilder
-    fun degree(degree: String): JobBuilder
-    fun jobPublishDate(jobPublishDate: LocalDate): JobBuilder
-    fun jobDeadline(jobDeadline: LocalDate): JobBuilder
-    fun jobURI(jobURI: URI): JobBuilder
+    val jobPoster: JobPoster
+    val jobURI: URI
+
+    var jobTitle: String
+    var jobLocation: String
+    var jobDescription: String
+    var jobResponsibilities: String
+    var jobRequirements: String
+    var jobPositionLevel: String
+    var jobSalary: String
+    var jobExperience: String
+    var jobDegree: String
+    var jobQualifications: String
+    var jobInstructionsOnHowToApply: String
+    var jobPreksAndBenefits: String
+    var typeOfVacancy: JobVacancyType
+    var jobPublishDate: LocalDate?
+    var jobDeadline: LocalDate?
+
     fun build(): Job
 
 }
+
+fun buildJob(
+    jobPoster: JobPoster,
+    jobURI: URI,
+    builderAction: JobBuilder.() -> Unit
+): Job = JobBuilderImpl(jobPoster, jobURI).apply(builderAction).build()
