@@ -9,9 +9,9 @@ import java.time.LocalDate
 interface JobPosterBuilder {
 
     val provider: JobsProvider
+    val name: String
+    val location: String
 
-    var name: String
-    var location: String
     var overview: String
     var businessType: JobPosterBusinessType
     var verification: JobProviderVerification
@@ -26,5 +26,18 @@ interface JobPosterBuilder {
 
 fun buildJobPoster(
     provider: JobsProvider,
-    builderAction: JobPosterBuilder.() -> Unit
-): JobPoster = JobPosterBuilderImpl(provider).apply(builderAction).build()
+    name: String,
+    location: String,
+    builderAction: (JobPosterBuilder.() -> Unit)? = null
+): JobPoster {
+
+    val jobPosterBuilderImpl = JobPosterBuilderImpl(
+        provider = provider,
+        name = name,
+        location = location
+    )
+
+    builderAction?.let { jobPosterBuilderImpl.apply { it } }
+
+    return jobPosterBuilderImpl.build()
+}

@@ -8,10 +8,12 @@ import com.jamhour.core.provider.JobsProvider
 import java.net.URI
 import java.time.LocalDate
 
-class JobPosterBuilderImpl(override val provider: JobsProvider) : JobPosterBuilder {
+class JobPosterBuilderImpl(
+    override val provider: JobsProvider,
+    override val name: String,
+    override val location: String
+) : JobPosterBuilder {
 
-    override var name: String = ""
-    override var location: String = ""
     override var overview: String = ""
     override var businessType: JobPosterBusinessType = JobPosterBusinessType.OTHER
     override var verification: JobProviderVerification = JobProviderVerification.NOT_SUPPORTED
