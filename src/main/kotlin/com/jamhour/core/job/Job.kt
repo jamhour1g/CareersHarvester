@@ -14,21 +14,22 @@ interface Job : Comparable<Job> {
 
     val jobTitle: String
     val jobLocation: String
-    val jobDescription: String
-    val jobResponsibilities: String
-    val jobRequirements: String
-    val jobPositionLevel: String
-    val jobSalary: String
-    val jobExperience: String
-    val jobDegree: String
-    val jobQualifications: String
-    val jobInstructionsOnHowToApply: String
-    val jobPreksAndBenefits: String
-    val jobPublishDate: LocalDate?
-    val jobDeadline: LocalDate?
-    val typeOfVacancy: JobVacancyType
-    val jobPoster: JobPoster
     val jobURI: URI
+    val jobPoster: JobPoster
+
+    val jobDescription: String get() = ""
+    val jobResponsibilities: String get() = ""
+    val jobRequirements: String get() = ""
+    val jobPositionLevel: String get() = ""
+    val jobSalary: String get() = ""
+    val jobExperience: String get() = ""
+    val jobDegree: String get() = ""
+    val jobQualifications: String get() = ""
+    val jobInstructionsOnHowToApply: String get() = ""
+    val jobPreksAndBenefits: String get() = ""
+    val typeOfVacancy: JobVacancyType get() = JobVacancyType.NOT_SPECIFIED
+    val jobPublishDate: LocalDate? get() = null
+    val jobDeadline: LocalDate? get() = null
 
     override fun compareTo(other: Job) = jobComparator.compare(this, other)
     fun getJobProvider() = jobPoster.posterProvider

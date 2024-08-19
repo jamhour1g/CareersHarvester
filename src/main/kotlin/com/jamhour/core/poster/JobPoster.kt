@@ -18,19 +18,19 @@ interface JobPoster : Comparable<JobPoster>, CoroutineScope {
 
     val posterName: String
     val posterLocation: String
-    val cachedJobsFromPoster: Deferred<List<Job>>
-    val businessType: JobPosterBusinessType
-    val posterOverview: String
     val posterProvider: JobsProvider
-    val providerVerification: JobProviderVerification
-    val posterUriOnProvider: URI?
-    val posterWebsite: URI?
-    val posterEstablishmentDate: LocalDate?
-    val posterContactInfo: JobPosterContactInfo?
+    val cachedJobsFromPoster: Deferred<List<Job>>
+
+    val businessType: JobPosterBusinessType get() = JobPosterBusinessType.OTHER
+    val posterOverview: String get() = ""
+    val providerVerification: JobProviderVerification get() = JobProviderVerification.NOT_SUPPORTED
+    val posterUriOnProvider: URI? get() = null
+    val posterWebsite: URI? get() = null
+    val posterEstablishmentDate: LocalDate? get() = null
+    val posterContactInfo: JobPosterContactInfo? get() = null
 
     override fun compareTo(other: JobPoster) = jobPosterComparator.compare(this, other)
-    override val coroutineContext: CoroutineContext
-        get() = posterProvider.coroutineContext
+    override val coroutineContext: CoroutineContext get() = posterProvider.coroutineContext
 
     suspend fun getAllJobsFromProvider() = posterProvider.cachedJobs.await()
         .asSequence()
