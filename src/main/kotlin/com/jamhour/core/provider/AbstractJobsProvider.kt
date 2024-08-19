@@ -10,7 +10,6 @@ abstract class AbstractJobsProvider(
     override val providerName: String,
     override val providerDescription: String,
     override val providerURI: URI?,
-    override val providerStatus: JobProviderStatus,
 ) : JobsProvider {
     override val cachedJobs: Deferred<List<Job>> by lazy { async { getJobs() } }
 
@@ -24,5 +23,5 @@ abstract class AbstractJobsProvider(
 
     override fun hashCode() = Objects.hash(providerName, providerDescription, providerURI)
     override fun toString() =
-        "AbstractJobsProvider(providerName='$providerName', providerDescription='$providerDescription', providerURI=$providerURI, providerStatus=$providerStatus)"
+        "AbstractJobsProvider(providerName='$providerName', providerDescription='$providerDescription', providerURI=$providerURI, providerStatus=${getProviderStatus()})"
 }

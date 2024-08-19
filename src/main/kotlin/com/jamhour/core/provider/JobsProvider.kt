@@ -17,7 +17,6 @@ interface JobsProvider : Comparable<JobsProvider>, CoroutineScope {
     val providerName: String
     val providerDescription: String
     val providerURI: URI?
-    val providerStatus: JobProviderStatus
     val cachedJobs: Deferred<List<Job>>
 
     override val coroutineContext: CoroutineContext
@@ -25,6 +24,8 @@ interface JobsProvider : Comparable<JobsProvider>, CoroutineScope {
 
     override fun compareTo(other: JobsProvider) = providerComparator.compare(this, other)
 
+    fun getProviderStatus(): JobProviderStatus
     suspend fun getJobs(): List<Job>
+
 
 }
