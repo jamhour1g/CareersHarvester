@@ -9,11 +9,11 @@ import java.time.LocalDate
 
 class JobBuilderImpl(
     override val jobPoster: JobPoster,
-    override val jobURI: URI
+    override val jobURI: URI,
+    override val jobTitle: String,
+    override val jobLocation: String
 ) : JobBuilder {
 
-    override var jobTitle: String = ""
-    override var jobLocation: String = ""
     override var jobDescription: String = ""
     override var jobResponsibilities: String = ""
     override var jobRequirements: String = ""

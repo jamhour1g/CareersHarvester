@@ -9,9 +9,9 @@ interface JobBuilder {
 
     val jobPoster: JobPoster
     val jobURI: URI
+    val jobTitle: String
+    val jobLocation: String
 
-    var jobTitle: String
-    var jobLocation: String
     var jobDescription: String
     var jobResponsibilities: String
     var jobRequirements: String
@@ -33,5 +33,19 @@ interface JobBuilder {
 fun buildJob(
     jobPoster: JobPoster,
     jobURI: URI,
-    builderAction: JobBuilder.() -> Unit
-): Job = JobBuilderImpl(jobPoster, jobURI).apply(builderAction).build()
+    jobTitle: String,
+    jobLocation: String,
+    builderAction: (JobBuilder.() -> Unit)? = null
+): Job {
+
+    val jobBuilderImpl = JobBuilderImpl(
+        jobPoster = jobPoster,
+        jobURI = jobURI,
+        jobTitle = jobTitle,
+        jobLocation = jobLocation
+    )
+
+    builderAction?.let { jobBuilderImpl.apply { it } }
+
+    return jobBuilderImpl.build()
+}
