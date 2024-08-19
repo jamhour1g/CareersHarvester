@@ -1,7 +1,6 @@
 package com.jamhour.core.job
 
 import com.jamhour.core.poster.JobPoster
-import com.jamhour.core.provider.JobsProvider
 import java.net.URI
 import java.time.LocalDate
 
@@ -21,7 +20,6 @@ interface JobBuilder {
     fun salary(salary: String): JobBuilder
     fun experience(experience: String): JobBuilder
     fun degree(degree: String): JobBuilder
-    fun jobsProvider(jobsProvider: JobsProvider): JobBuilder
     fun jobPublishDate(jobPublishDate: LocalDate): JobBuilder
     fun jobDeadline(jobDeadline: LocalDate): JobBuilder
     fun jobURI(jobURI: URI): JobBuilder

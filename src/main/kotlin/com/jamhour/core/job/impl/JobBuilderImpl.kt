@@ -4,7 +4,6 @@ import com.jamhour.core.job.Job
 import com.jamhour.core.job.JobBuilder
 import com.jamhour.core.job.JobVacancyType
 import com.jamhour.core.poster.JobPoster
-import com.jamhour.core.provider.JobsProvider
 import java.net.URI
 import java.time.LocalDate
 
@@ -26,7 +25,6 @@ class JobBuilderImpl() : JobBuilder {
     private var jobDeadline: LocalDate? = null
     private var typeOfVacancy: JobVacancyType = JobVacancyType.NOT_SPECIFIED
     private var jobPoster: JobPoster? = null
-    private var jobsProvider: JobsProvider? = null
     private var jobURI: URI? = null
 
     override fun title(title: String) = apply { jobTitle = title }
@@ -45,7 +43,6 @@ class JobBuilderImpl() : JobBuilder {
     override fun salary(salary: String) = apply { jobSalary = salary }
     override fun experience(experience: String) = apply { jobExperience = experience }
     override fun degree(degree: String) = apply { jobDegree = degree }
-    override fun jobsProvider(provider: JobsProvider) = apply { jobsProvider = provider }
     override fun jobPublishDate(publishDate: LocalDate) = apply { jobPublishDate = publishDate }
     override fun jobDeadline(deadline: LocalDate) = apply { jobDeadline = deadline }
     override fun jobURI(uri: URI) = apply { jobURI = uri }
@@ -67,7 +64,6 @@ class JobBuilderImpl() : JobBuilder {
         jobDeadline,
         typeOfVacancy,
         checkNotNull(jobPoster) { "JobPoster cannot be null" },
-        checkNotNull(jobsProvider) { "JobsProvider cannot be null" },
         checkNotNull(jobURI) { "JobURI cannot be null" }
     )
 

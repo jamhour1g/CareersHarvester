@@ -2,12 +2,11 @@ package com.jamhour.core.job
 
 import com.jamhour.core.job.impl.JobBuilderImpl
 import com.jamhour.core.poster.JobPoster
-import com.jamhour.core.provider.JobsProvider
 import java.net.URI
 import java.time.LocalDate
 
 val jobComparator: Comparator<Job> =
-    Comparator.comparing<Job, String> { it.jobsProvider.providerURI?.toString() ?: "" }
+    Comparator.comparing<Job, String> { it.getJobProvider().providerURI?.toString() ?: "" }
         .thenComparing(Job::jobTitle)
         .thenComparing(Job::jobLocation)
         .thenComparing(Job::jobDescription)
@@ -30,10 +29,10 @@ interface Job : Comparable<Job> {
     val jobDeadline: LocalDate?
     val typeOfVacancy: JobVacancyType
     val jobPoster: JobPoster
-    val jobsProvider: JobsProvider
     val jobURI: URI
 
     override fun compareTo(other: Job) = jobComparator.compare(this, other)
+    fun getJobProvider() = jobPoster.posterProvider
 
     companion object {
         @JvmStatic
