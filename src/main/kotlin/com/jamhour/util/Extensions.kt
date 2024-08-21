@@ -11,14 +11,22 @@ import java.net.URI
 import java.net.http.HttpResponse
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.util.logging.Logger
 
 fun String.toURI() = URI.create(this)
 
-inline fun <reified T> StringFormat.toBodyHandler() = HttpResponse.BodyHandler {
+inline fun <reified T> StringFormat.toBodyHandler(logger: Logger? = null) = HttpResponse.BodyHandler {
     HttpResponse.BodySubscribers.mapping(
         HttpResponse.BodySubscribers.ofString(Charsets.UTF_8)
     ) {
-        runCatching { decodeFromString<T>(it) }.getOrNull()
+        logger?.info { "Request response received" }
+        try {
+            logger?.info { "Converting response" }
+            return@mapping decodeFromString<T>(it).also { logger?.info { "Successfully converted response" } }
+        } catch (e: Exception) {
+            logger?.severe { "An error occurred: ${e.stackTraceToString()}" }
+            return@mapping null.also { logger?.info { "Returning null" } }
+        }
     }
 }
 
