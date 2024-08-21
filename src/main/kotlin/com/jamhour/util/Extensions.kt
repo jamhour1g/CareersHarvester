@@ -11,10 +11,12 @@ import kotlinx.serialization.encoding.Encoder
 import java.net.URI
 import java.net.http.HttpResponse
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.logging.ConsoleHandler
 import java.util.logging.Formatter
+import java.util.logging.LogRecord
 import java.util.logging.Logger
 
 fun String.toURI() = URI.create(this)
@@ -60,31 +62,33 @@ class LocalDateSerializer(
     override fun serialize(encoder: Encoder, value: LocalDate) = encoder.encodeString(value.format(format))
 }
 
-fun loggerFactory(
-    loggerForClass: Class<*>
-): Logger {
-
+fun loggerFactory(loggerForClass: Class<*>): Logger {
     val logger = Logger.getLogger(loggerForClass.name).apply {
         useParentHandlers = false
     }
 
     val consoleHandler = ConsoleHandler().apply {
-        formatter = object : Formatter() {
-            override fun format(record: java.util.logging.LogRecord): String {
-                val toLocalDateTime = record.instant.atZone(java.time.ZoneId.systemDefault()).toLocalDateTime()
-                return buildString {
-                    append("[").append(loggerForClass.name).append("]").append(" ")
-                    append("[").append(record.sourceMethodName).append("]").append(" ")
-                    append("[").append(Thread.currentThread().name).append("]").append(" ")
-                    append("[").append(toLocalDateTime).append("]").append(": ")
-                    append("[").append(record.level.name).append("] - ").append(record.message)
-                    appendLine()
-                }
-            }
-        }
+        formatter = LogFormatter(loggerForClass.name)
     }
 
     return logger.apply { addHandler(consoleHandler) }
+}
+
+private class LogFormatter(private val className: String) : Formatter() {
+    private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd@HH:mm:ss")
+
+    override fun format(record: LogRecord): String {
+        val toLocalDateTime = record.instant.atZone(ZoneId.systemDefault()).toLocalDateTime()
+        return buildString {
+            append("[$className] ")
+            append("[${record.sourceMethodName}] ")
+            append("[${Thread.currentThread().name}] ")
+            append("[${toLocalDateTime.format(dateTimeFormatter)}] ")
+            append("[${record.level.name}] - ")
+            append(record.message)
+            appendLine()
+        }
+    }
 }
 
 
