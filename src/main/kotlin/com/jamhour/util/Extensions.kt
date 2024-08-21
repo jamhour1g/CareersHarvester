@@ -23,13 +23,15 @@ inline fun <reified T> StringFormat.toBodyHandler(logger: Logger? = null) = Http
     HttpResponse.BodySubscribers.mapping(
         HttpResponse.BodySubscribers.ofString(Charsets.UTF_8)
     ) {
-        logger?.info { "Request response received" }
+        logger?.info { "Received response from request" }
         try {
-            logger?.info { "Converting response" }
-            return@mapping decodeFromString<T>(it).also { logger?.info { "Successfully converted response" } }
+            logger?.info { "Attempting to convert response to ${T::class.simpleName}" }
+            val result = decodeFromString<T>(it)
+            logger?.info { "Successfully converted response to ${T::class.simpleName}" }
+            result
         } catch (e: Exception) {
-            logger?.severe { "An error occurred: ${e.stackTraceToString()}" }
-            return@mapping null.also { logger?.info { "Returning null" } }
+            logger?.severe { "Error converting response to ${T::class.simpleName}: ${e.stackTraceToString()}" }
+            null.also { logger?.info { "Returning null due to conversion error" } }
         }
     }
 }
