@@ -13,6 +13,8 @@ import java.net.http.HttpResponse
 import java.time.LocalDate
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.util.logging.ConsoleHandler
+import java.util.logging.Formatter
 import java.util.logging.Logger
 
 fun String.toURI() = URI.create(this)
@@ -55,4 +57,32 @@ class LocalDateSerializer(
     override fun deserialize(decoder: Decoder): LocalDate = LocalDate.parse(decoder.decodeString(), format)
     override fun serialize(encoder: Encoder, value: LocalDate) = encoder.encodeString(value.format(format))
 }
+
+fun loggerFactory(
+    loggerForClass: Class<*>
+): Logger {
+
+    val logger = Logger.getLogger(loggerForClass.name).apply {
+        useParentHandlers = false
+    }
+
+    val consoleHandler = ConsoleHandler().apply {
+        formatter = object : Formatter() {
+            override fun format(record: java.util.logging.LogRecord): String {
+                val toLocalDateTime = record.instant.atZone(java.time.ZoneId.systemDefault()).toLocalDateTime()
+                return buildString {
+                    append("[").append(loggerForClass.name).append("]").append(" ")
+                    append("[").append(record.sourceMethodName).append("]").append(" ")
+                    append("[").append(Thread.currentThread().name).append("]").append(" ")
+                    append("[").append(toLocalDateTime).append("]").append(": ")
+                    append("[").append(record.level.name).append("] - ").append(record.message)
+                    appendLine()
+                }
+            }
+        }
+    }
+
+    return logger.apply { addHandler(consoleHandler) }
+}
+
 
