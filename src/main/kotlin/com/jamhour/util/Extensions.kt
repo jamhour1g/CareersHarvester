@@ -5,10 +5,12 @@ import kotlinx.serialization.StringFormat
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import java.net.URI
 import java.net.http.HttpResponse
+import java.time.LocalDate
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.logging.Logger
@@ -42,5 +44,15 @@ class ZonedDateTimeSerializer(
     override val descriptor = PrimitiveSerialDescriptor(ZonedDateTime::javaClass.name, PrimitiveKind.STRING)
     override fun serialize(encoder: Encoder, value: ZonedDateTime) = encoder.encodeString(value.toString())
     override fun deserialize(decoder: Decoder): ZonedDateTime = ZonedDateTime.parse(decoder.decodeString(), format)
+}
+
+class LocalDateSerializer(
+    private val format: DateTimeFormatter
+) : KSerializer<LocalDate> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor(LocalDate::javaClass.name, PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): LocalDate = LocalDate.parse(decoder.decodeString(), format)
+    override fun serialize(encoder: Encoder, value: LocalDate) = encoder.encodeString(value.format(format))
 }
 
