@@ -1,20 +1,49 @@
 package com.jamhour.util
 
+import kotlinx.coroutines.future.await
+import kotlinx.serialization.StringFormat
+import kotlinx.serialization.decodeFromString
 import java.net.Authenticator
 import java.net.CookieHandler
 import java.net.ProxySelector
-import java.net.http.HttpClient
+import java.net.URI
+import java.net.http.HttpClient.Redirect
+import java.net.http.HttpClient.Version
+import java.net.http.HttpClient.newHttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
 import java.util.Optional
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executor
+import java.util.logging.Logger
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLParameters
 
-object HttpClient : HttpClient() {
-    val client: HttpClient = newHttpClient()
+fun String.toURI() = URI.create(this)
+
+suspend fun <T> HttpRequest.sendAsync(bodyHandler: HttpResponse.BodyHandler<T>): T =
+    HttpClient.sendAsync(this, bodyHandler).await().body()
+
+inline fun <reified T> StringFormat.toBodyHandler(logger: Logger? = null) = HttpResponse.BodyHandler {
+    HttpResponse.BodySubscribers.mapping(
+        HttpResponse.BodySubscribers.ofString(Charsets.UTF_8)
+    ) {
+        logger?.info { "Received response from request" }
+        try {
+            logger?.info { "Attempting to convert response to ${T::class.simpleName}" }
+            val result = decodeFromString<T>(it)
+            logger?.info { "Successfully converted response to ${T::class.simpleName}" }
+            result
+        } catch (e: Exception) {
+            logger?.severe { "Error converting response to ${T::class.simpleName}: ${e.stackTraceToString()}" }
+            null.also { logger?.info { "Returning null due to conversion error" } }
+        }
+    }
+}
+
+object HttpClient : java.net.http.HttpClient() {
+    val client: java.net.http.HttpClient = newHttpClient()
 
     override fun cookieHandler(): Optional<CookieHandler> = client.cookieHandler()
     override fun connectTimeout(): Optional<Duration> = client.connectTimeout()
@@ -42,3 +71,6 @@ object HttpClient : HttpClient() {
         pushPromiseHandler: HttpResponse.PushPromiseHandler<T>
     ): CompletableFuture<HttpResponse<T>> = client.sendAsync(request, responseBodyHandler, pushPromiseHandler)
 }
+
+
+
