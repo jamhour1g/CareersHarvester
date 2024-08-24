@@ -10,7 +10,10 @@ abstract class AbstractJobsProvider(
     override val providerName: String,
     override val providerURI: URI? = null,
 ) : JobsProvider {
+
+    // ! TODO: find a way to invalidate this cashed data
     override val cachedJobs: Deferred<List<Job>> by lazy { async { getJobs() } }
+    var providerStatusProperty = JobProviderStatus.PROCESSING; protected set
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -20,6 +23,7 @@ abstract class AbstractJobsProvider(
                 providerURI == other.providerURI
     }
 
+    override fun getProviderStatus() = providerStatusProperty
     override fun hashCode() = Objects.hash(providerName, providerDescription, providerURI)
     override fun toString() =
         "AbstractJobsProvider(providerName='$providerName', providerDescription='$providerDescription', providerURI=$providerURI, providerStatus=${getProviderStatus()})"

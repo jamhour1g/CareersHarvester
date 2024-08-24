@@ -30,9 +30,6 @@ class FoothillSolutions : AbstractJobsProvider(
     "FoothillSolutions",
     "https://www.foothillsolutions.com/".toURI()
 ) {
-    private var providerStatus = JobProviderStatus.PROCESSING
-
-    override fun getProviderStatus() = providerStatus
 
     override suspend fun getJobs(): List<Job> = coroutineScope {
 
@@ -56,10 +53,10 @@ class FoothillSolutions : AbstractJobsProvider(
             .sendAsync(jsonSerializer.toBodyHandler<FoothillJobsResponse>(logger))
 
         jobsResponse?.also {
-            providerStatus = JobProviderStatus.ACTIVE
+            providerStatusProperty = JobProviderStatus.ACTIVE
             logger.info { "Received job listings response for request to $CAREER_ENDPOINT" }
         } ?: run {
-            providerStatus = JobProviderStatus.FAILED
+            providerStatusProperty = JobProviderStatus.FAILED
             logger.severe { "Failed to fetch job listings from $CAREER_ENDPOINT. Request returned null." }
             return@coroutineScope emptyList()
         }

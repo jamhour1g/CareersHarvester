@@ -30,9 +30,6 @@ class AsalTech : AbstractJobsProvider(
     "https://www.asaltech.com/".toURI()
 ) {
 
-    private var providerStatus = JobProviderStatus.PROCESSING
-    override fun getProviderStatus() = providerStatus
-
     override suspend fun getJobs(): List<Job> = coroutineScope {
 
         val jsonSerializer = Json {
@@ -54,7 +51,7 @@ class AsalTech : AbstractJobsProvider(
             .sendAsync(jsonSerializer.toBodyHandler<AsalJobsResponse>(logger))
 
         response?.let {
-            providerStatus = JobProviderStatus.ACTIVE
+            providerStatusProperty = JobProviderStatus.ACTIVE
             logger.info { "Successfully received job listings from ${AsalJobsResponse.API_URI}. Number of jobs found: ${it.offers.size}" }
 
             it.offers
@@ -63,7 +60,7 @@ class AsalTech : AbstractJobsProvider(
 
         } ?: run {
             logger.severe { "Failed to receive job listings from ${AsalJobsResponse.API_URI}. The response was null." }
-            providerStatus = JobProviderStatus.FAILED
+            providerStatusProperty = JobProviderStatus.FAILED
 
             emptyList()
         }
