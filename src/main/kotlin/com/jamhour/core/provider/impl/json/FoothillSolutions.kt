@@ -131,10 +131,10 @@ private data class FoothillJob(
 
     fun toJob(
         jobPoster: JobPoster,
-        jobDetails: JobDetails?
+        foothillJobDetails: FoothillJobDetails?
     ) = JobBuilderImpl(jobPoster, careerURI, jobOpeningName, location.toJobLocation()).apply {
-        jobDescription = jobDetails?.description ?: "No description available."
-        jobPublishDate = jobDetails?.datePosted
+        jobDescription = foothillJobDetails?.description ?: "No description available."
+        jobPublishDate = foothillJobDetails?.datePosted
     }.build()
 
     suspend fun fetchJobDetails(
@@ -152,15 +152,15 @@ private data class FoothillJob(
 
             logger.info { "Fetching job details for job ID $id from $careerDetailsEndpointURI" }
 
-            val jobDetails = jobDetailsRequest.sendAsync(stringFormat.toBodyHandler<JobDetails>(logger))
+            val foothillJobDetails = jobDetailsRequest.sendAsync(stringFormat.toBodyHandler<FoothillJobDetails>(logger))
 
-            if (jobDetails == null) {
+            if (foothillJobDetails == null) {
                 logger.severe { "Failed to fetch job details for job ID $id. Response returned null." }
             } else {
                 logger.info { "Successfully retrieved job details for job ID $id" }
             }
 
-            toJob(jobPoster, jobDetails)
+            toJob(jobPoster, foothillJobDetails)
         }
     }
 }
@@ -175,7 +175,7 @@ private data class Location(
 }
 
 @Serializable
-private data class JobDetails(
+private data class FoothillJobDetails(
     val employmentStatusLabel: String = "",
     val description: String = "",
     @Contextual
