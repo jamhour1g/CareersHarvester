@@ -23,14 +23,13 @@ import java.net.http.HttpRequest
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
-private val logger = loggerFactory(AsalTech::class.java)
-
 class AsalTech : AbstractJobsProvider(
     "AsalTech",
     "https://www.asaltech.com/".toURI()
 ) {
 
     override suspend fun getJobs(): List<Job> = coroutineScope {
+        asalLogger.info { "Starting job retrieval process for $providerName from $JOBS_API_ENDPOINT." }
 
         val jsonSerializer = Json {
             ignoreUnknownKeys = true
@@ -42,59 +41,67 @@ class AsalTech : AbstractJobsProvider(
             }
         }
 
-        logger.info { "Sending HTTP request to fetch job listings from ${AsalJobsResponse.API_URI}" }
+        asalLogger.info { "Sending HTTP request to fetch job listings from $JOBS_API_ENDPOINT." }
 
         val response = HttpRequest.newBuilder()
-            .uri(AsalJobsResponse.API_URI.toURI())
+            .uri(JOBS_API_ENDPOINT.toURI())
             .GET()
             .build()
-            .sendAsync(jsonSerializer.toBodyHandler<AsalJobsResponse>(logger))
+            .sendAsync(jsonSerializer.toBodyHandler<AsalJobsResponse>(asalLogger))
 
-        response?.let {
-            providerStatusProperty = JobProviderStatus.ACTIVE
-            logger.info { "Successfully received job listings from ${AsalJobsResponse.API_URI}. Number of jobs found: ${it.offers.size}" }
-
-            it.offers
-                .filter { it.categoryCode == AsalJobsResponse.IT_CATEGORY_CODE }
-                .map { it.toJob(getJobPoster()) }
-
-        } ?: run {
-            logger.severe { "Failed to receive job listings from ${AsalJobsResponse.API_URI}. The response was null." }
+        if (response == null) {
+            asalLogger.severe { "Failed to receive job listings from $JOBS_API_ENDPOINT. The response was null." }
             providerStatusProperty = JobProviderStatus.FAILED
-
-            emptyList()
+            return@coroutineScope emptyList()
         }
+
+        asalLogger.info { "Successfully received job listings from $JOBS_API_ENDPOINT. Number of jobs found: ${response.offers.size}" }
+        providerStatusProperty = JobProviderStatus.ACTIVE
+
+        val filteredJobs = response.offers.filter { it.categoryCode == AsalJobsResponse.IT_CATEGORY_CODE }
+
+        if (filteredJobs.isEmpty()) {
+            asalLogger.warning { "No IT category jobs found in the response from $JOBS_API_ENDPOINT." }
+        } else {
+            asalLogger.info { "Filtering complete. ${filteredJobs.size} IT job(s) found." }
+        }
+
+        filteredJobs.map { it.toJob(getJobPoster()) }
     }
 
-    fun getJobPoster() = buildJobPoster(this, providerName, AsalJobsResponse.LOCATION) {
+    private fun getJobPoster() = buildJobPoster(this, providerName, LOCATION) {
         website = providerURI
     }
 
-    @Serializable
-    private data class AsalJobsResponse(val offers: List<AsalJob>) {
-        companion object {
-            @Suppress("SpellCheckingInspection")
-            const val LOCATION = "Ramallah,rawabi"
-            const val IT_CATEGORY_CODE = "information_technology"
-            val DATE_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z")
-            const val API_URI = "https://career.recruitee.com/api/c/40756/widget"
-        }
+    companion object {
+        private val asalLogger = loggerFactory(AsalTech::class.java)
+        private const val LOCATION = "Ramallah,rawabi"
+        private const val JOBS_API_ENDPOINT = "https://career.recruitee.com/api/c/40756/widget"
     }
+}
 
-    @Serializable
-    private data class AsalJob(
-        @SerialName("published_at") @Contextual val publishDate: ZonedDateTime,
-        val title: String,
-        val location: String,
-        @SerialName("category_code") val categoryCode: String,
-        val requirements: String,
-        @SerialName("careers_url") @Serializable(with = URISerializer::class) val jobUri: URI,
-        val description: String
-    ) {
-        fun toJob(jobPoster: JobPoster) = buildJob(jobPoster, jobUri, title, location) {
-            jobDescription = description
-            jobRequirements = requirements
-            jobPublishDate = publishDate.toLocalDate()
-        }
+@Serializable
+private data class AsalJobsResponse(val offers: List<AsalJob>) {
+    companion object {
+        const val IT_CATEGORY_CODE = "information_technology"
+        val DATE_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z")
+    }
+}
+
+// TODO : add default values and allow for course null values in the json builder
+@Serializable
+private data class AsalJob(
+    @SerialName("published_at") @Contextual val publishDate: ZonedDateTime,
+    val title: String,
+    val location: String,
+    @SerialName("category_code") val categoryCode: String,
+    val requirements: String?,
+    @SerialName("careers_url") @Serializable(with = URISerializer::class) val jobUri: URI,
+    val description: String
+) {
+    fun toJob(jobPoster: JobPoster) = buildJob(jobPoster, jobUri, title, location) {
+        jobDescription = description
+        jobRequirements = requirements ?: ""
+        jobPublishDate = publishDate.toLocalDate()
     }
 }

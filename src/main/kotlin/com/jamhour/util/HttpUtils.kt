@@ -20,7 +20,7 @@ import java.util.logging.Logger
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLParameters
 
-fun String.toURI() = URI.create(this)
+fun String.toURI(): URI = URI.create(this)
 
 suspend fun <T> HttpRequest.sendAsync(bodyHandler: HttpResponse.BodyHandler<T>): T =
     HttpClient.sendAsync(this, bodyHandler).await().body()

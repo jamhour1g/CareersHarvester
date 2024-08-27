@@ -17,14 +17,14 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.StringFormat
+import kotlinx.serialization.Transient
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import java.net.http.HttpRequest
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-
-private val logger = loggerFactory(FoothillSolutions::class.java)
-private const val CAREER_ENDPOINT = "https://foothillsolutions.bamboohr.com/careers"
+import java.util.logging.Logger
 
 class FoothillSolutions : AbstractJobsProvider(
     "FoothillSolutions",
@@ -32,7 +32,7 @@ class FoothillSolutions : AbstractJobsProvider(
 ) {
 
     override suspend fun getJobs(): List<Job> = coroutineScope {
-
+        foothillLogger.info { "Starting job retrieval process for $providerName from $CAREER_ENDPOINT." }
 
         val jsonSerializer = Json {
             ignoreUnknownKeys = true
@@ -44,106 +44,140 @@ class FoothillSolutions : AbstractJobsProvider(
             }
         }
 
-        logger.info { "Initiating asynchronous request to fetch job listings from $CAREER_ENDPOINT" }
+        val jobsResponse = fetchJobsList(jsonSerializer)
 
-        val jobsResponse = HttpRequest.newBuilder()
-            .uri("$CAREER_ENDPOINT/list".toURI())
-            .GET()
-            .build()
-            .sendAsync(jsonSerializer.toBodyHandler<FoothillJobsResponse>(logger))
-
-        jobsResponse?.also {
-            providerStatusProperty = JobProviderStatus.ACTIVE
-            logger.info { "Received job listings response for request to $CAREER_ENDPOINT" }
-        } ?: run {
+        if (jobsResponse == null) {
+            foothillLogger.warning { "Job retrieval failed. Setting provider status to FAILED." }
             providerStatusProperty = JobProviderStatus.FAILED
-            logger.severe { "Failed to fetch job listings from $CAREER_ENDPOINT. Request returned null." }
             return@coroutineScope emptyList()
         }
 
-        logger.info { "Filtering job listings for the software department (Department ID: ${FoothillJobsResponse.SOFTWARE_DEPARTMENT_CODE})" }
-        jobsResponse.result
-            .filter { it.departmentId == FoothillJobsResponse.SOFTWARE_DEPARTMENT_CODE.toLong() }
-            .map {
-                val jobDetailsRequest = HttpRequest.newBuilder()
-                    .uri(it.detailsEndPoint())
-                    .GET()
-                    .build()
-
-                fetchJobDetails(it, jobDetailsRequest, jsonSerializer)
-            }.awaitAll()
+        foothillLogger.info { "Job retrieval successful. Setting provider status to ACTIVE." }
+        providerStatusProperty = JobProviderStatus.ACTIVE
+        filterAndFetchJobDetails(jobsResponse, jsonSerializer)
     }
 
-    private fun fetchJobDetails(
-        job: FoothillJob,
-        jobDetailsRequest: HttpRequest,
-        jsonSerializer: Json
-    ): Deferred<Job> = async {
-        logger.info { "Fetching job details for job ID ${job.id} from ${job.detailsEndPoint()}" }
+    private suspend fun fetchJobsList(jsonSerializer: Json): FoothillJobsResponse? {
+        foothillLogger.info { "Initiating asynchronous request to fetch job listings from $CAREER_ENDPOINT." }
 
-        val jobDetails = jobDetailsRequest.sendAsync(jsonSerializer.toBodyHandler<JobDetails>(logger))
+        val foothillJobsResponse = HttpRequest.newBuilder()
+            .uri("$CAREER_ENDPOINT/list".toURI())
+            .GET()
+            .build()
+            .sendAsync(jsonSerializer.toBodyHandler<FoothillJobsResponse>(foothillLogger))
 
-        jobDetails?.also {
-            logger.info { "Successfully retrieved job details for job ID ${job.id}" }
-        } ?: run {
-            logger.severe { "Failed to fetch job details for job ID ${job.id}. Response returned null." }
+        if (foothillJobsResponse == null) {
+            foothillLogger.severe { "Failed to fetch job listings from $CAREER_ENDPOINT. Received a null response." }
+            return null
         }
 
-        buildJobFromDetails(job, jobDetails, getJobPoster())
+        foothillLogger.info { "Successfully received job listings response from $CAREER_ENDPOINT." }
+        return foothillJobsResponse
     }
 
-    private fun buildJobFromDetails(
-        job: FoothillJob,
-        jobDetails: JobDetails?,
-        jobPoster: JobPoster
-    ) = job.toJobBuilder(jobPoster).apply {
+    private suspend fun filterAndFetchJobDetails(
+        jobsResponse: FoothillJobsResponse,
+        jsonSerializer: Json
+    ): List<Job> {
+        foothillLogger.info { "Filtering job listings for the software department (Department ID: ${FoothillJobsResponse.SOFTWARE_DEPARTMENT_CODE}). Total jobs retrieved: ${jobsResponse.result.size}" }
+
+        val filteredJobs = jobsResponse.result.filter {
+            it.departmentId == FoothillJobsResponse.SOFTWARE_DEPARTMENT_CODE.toLong()
+        }
+
+        if (filteredJobs.isEmpty()) {
+            foothillLogger.warning { "No job listings found for the software department (Department ID: ${FoothillJobsResponse.SOFTWARE_DEPARTMENT_CODE})." }
+            return emptyList()
+        }
+
+        foothillLogger.info { "Found ${filteredJobs.size} job(s) in the software department. Fetching details for each job." }
+        return filteredJobs.map { it.fetchJobDetails(foothillLogger, getJobPoster(), jsonSerializer) }.awaitAll()
+    }
+
+    private fun getJobPoster() = buildJobPoster(this, providerName, LOCATION) {
+        website = providerURI
+    }
+
+    companion object {
+        private val foothillLogger = loggerFactory(FoothillSolutions::class.java)
+        private const val LOCATION = "Nablus"
+        private const val CAREER_ENDPOINT = "https://foothillsolutions.bamboohr.com/careers"
+    }
+}
+
+@Serializable
+private data class FoothillJobsResponse(
+    val result: List<FoothillJob>
+) {
+    companion object {
+        const val SOFTWARE_DEPARTMENT_CODE = 18504
+        val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    }
+}
+
+@Serializable
+private data class FoothillJob(
+    val id: Long,
+    val jobOpeningName: String,
+    val departmentId: Long,
+    val employmentStatusLabel: String,
+    val location: Location
+) {
+    @Transient
+    private val careerURI = "https://foothillsolutions.bamboohr.com/careers/$id".toURI()
+
+    @Transient
+    private val careerDetailsEndpointURI = "https://foothillsolutions.bamboohr.com/careers/$id/detail".toURI()
+
+    fun toJob(
+        jobPoster: JobPoster,
+        jobDetails: JobDetails?
+    ) = JobBuilderImpl(jobPoster, careerURI, jobOpeningName, location.toJobLocation()).apply {
         jobDescription = jobDetails?.description ?: "No description available."
         jobPublishDate = jobDetails?.datePosted
     }.build()
 
-    private fun getJobPoster() = buildJobPoster(this, providerName, FoothillJobsResponse.LOCATION) {
-        website = providerURI
-    }
+    suspend fun fetchJobDetails(
+        logger: Logger,
+        jobPoster: JobPoster,
+        stringFormat: StringFormat
+    ): Deferred<Job> = coroutineScope {
+        async {
+            logger.info { "Fetching job details for job ID $id" }
 
-    @Serializable
-    private data class FoothillJobsResponse(
-        val result: List<FoothillJob>
-    ) {
-        companion object {
-            @Suppress("SpellCheckingInspection")
-            const val LOCATION = "Nablus"
-            const val SOFTWARE_DEPARTMENT_CODE = 18504
-            val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+            val jobDetailsRequest = HttpRequest.newBuilder()
+                .uri(careerDetailsEndpointURI)
+                .GET()
+                .build()
+
+            logger.info { "Fetching job details for job ID $id from $careerDetailsEndpointURI" }
+
+            val jobDetails = jobDetailsRequest.sendAsync(stringFormat.toBodyHandler<JobDetails>(logger))
+
+            if (jobDetails == null) {
+                logger.severe { "Failed to fetch job details for job ID $id. Response returned null." }
+            } else {
+                logger.info { "Successfully retrieved job details for job ID $id" }
+            }
+
+            toJob(jobPoster, jobDetails)
         }
     }
-
-    @Serializable
-    private data class FoothillJob(
-        val id: Long,
-        val jobOpeningName: String,
-        val departmentId: Long,
-        val employmentStatusLabel: String,
-        val location: Location
-    ) {
-        fun toJobBuilder(jobPoster: JobPoster) =
-            JobBuilderImpl(jobPoster, "$CAREER_ENDPOINT/$id".toURI(), jobOpeningName, location.toJobLocation())
-
-        fun detailsEndPoint() = "$CAREER_ENDPOINT/$id/detail".toURI()
-    }
-
-    @Serializable
-    private data class Location(
-        val city: String? = "",
-        val state: String? = ""
-    ) {
-        fun toJobLocation() = "$state,$city"
-    }
-
-    @Serializable
-    private data class JobDetails(
-        val employmentStatusLabel: String = "",
-        val description: String = "",
-        @Contextual
-        val datePosted: LocalDate? = null
-    )
 }
+
+
+@Serializable
+private data class Location(
+    val city: String? = "",
+    val state: String? = ""
+) {
+    fun toJobLocation() = "$state,$city"
+}
+
+@Serializable
+private data class JobDetails(
+    val employmentStatusLabel: String = "",
+    val description: String = "",
+    @Contextual
+    val datePosted: LocalDate? = null
+)
