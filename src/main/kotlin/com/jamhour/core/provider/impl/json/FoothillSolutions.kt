@@ -111,7 +111,7 @@ private data class FoothillJobsResponse(
 ) {
     companion object {
         const val SOFTWARE_DEPARTMENT_CODE = 18504
-        val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        val dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE
     }
 }
 
