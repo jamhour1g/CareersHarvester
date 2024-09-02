@@ -3,7 +3,6 @@ package com.jamhour.core.provider.impl.json
 import com.jamhour.core.job.Job
 import com.jamhour.core.job.impl.JobBuilderImpl
 import com.jamhour.core.poster.JobPoster
-import com.jamhour.core.poster.buildJobPoster
 import com.jamhour.core.provider.AbstractJobsProvider
 import com.jamhour.core.provider.JobProviderStatus
 import com.jamhour.util.ZonedDateTimeSerializer
@@ -26,6 +25,7 @@ import java.util.logging.Logger
 
 class Harri : AbstractJobsProvider(
     "Harri",
+    LOCATION,
     "https://harri.com/".toURI()
 ) {
 
@@ -69,11 +69,7 @@ class Harri : AbstractJobsProvider(
 
         harriLogger.info { "Processing and fetching details for each job." }
         harriJobsFormat.data.harriJobs
-            .map { it.getJobDetails(harriLogger, getJobPoster(), jsonSerializer) }
-    }
-
-    private fun getJobPoster() = buildJobPoster(this, providerName, LOCATION) {
-        website = "https://harri.com/".toURI()
+            .map { it.getJobDetails(harriLogger, getDefaultJobPoster(), jsonSerializer) }
     }
 
     companion object {

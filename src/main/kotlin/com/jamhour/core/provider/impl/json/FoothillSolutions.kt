@@ -3,7 +3,6 @@ package com.jamhour.core.provider.impl.json
 import com.jamhour.core.job.Job
 import com.jamhour.core.job.impl.JobBuilderImpl
 import com.jamhour.core.poster.JobPoster
-import com.jamhour.core.poster.buildJobPoster
 import com.jamhour.core.provider.AbstractJobsProvider
 import com.jamhour.core.provider.JobProviderStatus
 import com.jamhour.util.LocalDateSerializer
@@ -28,6 +27,7 @@ import java.util.logging.Logger
 
 class FoothillSolutions : AbstractJobsProvider(
     "FoothillSolutions",
+    LOCATION,
     "https://www.foothillsolutions.com/".toURI()
 ) {
 
@@ -91,11 +91,7 @@ class FoothillSolutions : AbstractJobsProvider(
         }
 
         foothillLogger.info { "Found ${filteredJobs.size} job(s) in the software department. Fetching details for each job." }
-        return filteredJobs.map { it.fetchJobDetails(foothillLogger, getJobPoster(), jsonSerializer) }.awaitAll()
-    }
-
-    private fun getJobPoster() = buildJobPoster(this, providerName, LOCATION) {
-        website = providerURI
+        return filteredJobs.map { it.fetchJobDetails(foothillLogger, getDefaultJobPoster(), jsonSerializer) }.awaitAll()
     }
 
     companion object {

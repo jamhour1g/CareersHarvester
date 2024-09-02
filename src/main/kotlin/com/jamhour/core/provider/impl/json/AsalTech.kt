@@ -3,7 +3,6 @@ package com.jamhour.core.provider.impl.json
 import com.jamhour.core.job.Job
 import com.jamhour.core.job.buildJob
 import com.jamhour.core.poster.JobPoster
-import com.jamhour.core.poster.buildJobPoster
 import com.jamhour.core.provider.AbstractJobsProvider
 import com.jamhour.core.provider.JobProviderStatus
 import com.jamhour.util.URISerializer
@@ -25,6 +24,7 @@ import java.time.format.DateTimeFormatter
 
 class AsalTech : AbstractJobsProvider(
     "AsalTech",
+    LOCATION,
     "https://www.asaltech.com/".toURI()
 ) {
 
@@ -66,11 +66,7 @@ class AsalTech : AbstractJobsProvider(
             asalLogger.info { "Filtering complete. ${filteredJobs.size} IT job(s) found." }
         }
 
-        filteredJobs.map { it.toJob(getJobPoster()) }
-    }
-
-    private fun getJobPoster() = buildJobPoster(this, providerName, LOCATION) {
-        website = providerURI
+        filteredJobs.map { it.toJob(getDefaultJobPoster()) }
     }
 
     companion object {
@@ -88,7 +84,7 @@ private data class AsalJobsResponse(val offers: List<AsalJob>) {
     }
 }
 
-// TODO : add default values and allow for course null values in the json builder
+// TODO : add default values and allow for coerce null values in the json builder
 @Serializable
 private data class AsalJob(
     @SerialName("published_at") @Contextual val publishDate: ZonedDateTime,

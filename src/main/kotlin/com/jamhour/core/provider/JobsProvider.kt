@@ -15,6 +15,7 @@ val providerComparator: Comparator<JobsProvider> =
 interface JobsProvider : Comparable<JobsProvider>, CoroutineScope {
 
     val providerName: String
+    val location: String
     val cachedJobs: Deferred<List<Job>>
 
     val providerDescription: String get() = ""
@@ -25,6 +26,5 @@ interface JobsProvider : Comparable<JobsProvider>, CoroutineScope {
 
     fun getProviderStatus(): JobProviderStatus
     suspend fun getJobs(): List<Job>
-
 
 }
