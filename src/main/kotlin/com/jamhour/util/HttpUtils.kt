@@ -9,7 +9,6 @@ import java.net.ProxySelector
 import java.net.URI
 import java.net.http.HttpClient.Redirect
 import java.net.http.HttpClient.Version
-import java.net.http.HttpClient.newHttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
@@ -19,6 +18,8 @@ import java.util.concurrent.Executor
 import java.util.logging.Logger
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLParameters
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 fun String.toURI(): URI = URI.create(this)
 
@@ -43,7 +44,10 @@ inline fun <reified T> StringFormat.toBodyHandler(logger: Logger? = null) = Http
 }
 
 object HttpClient : java.net.http.HttpClient() {
-    val client: java.net.http.HttpClient = newHttpClient()
+    val client: java.net.http.HttpClient = newBuilder()
+        .sslParameters(SSLParameters())
+        .connectTimeout(10.seconds.toJavaDuration())
+        .build()
 
     override fun cookieHandler(): Optional<CookieHandler> = client.cookieHandler()
     override fun connectTimeout(): Optional<Duration> = client.connectTimeout()
