@@ -13,10 +13,15 @@ repositories {
 dependencies {
     val coroutinesVersion = "1.9.0-RC"
     val serializationVersion = "1.7.1"
+    val jsoupVersion = "1.18.1"
+    val kotlinStdLibVersion = "2.0.10"
+
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
+    implementation("org.jsoup:jsoup:$jsoupVersion") // https://mvnrepository.com/artifact/org.jsoup/jsoup
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:$kotlinStdLibVersion")
+
     testImplementation(kotlin("test"))
-    implementation("org.jetbrains.kotlin:kotlin-stdlib:2.0.10")
 }
 
 tasks.test {
