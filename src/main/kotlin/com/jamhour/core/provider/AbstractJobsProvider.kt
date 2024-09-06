@@ -2,6 +2,7 @@ package com.jamhour.core.provider
 
 import com.jamhour.core.job.Job
 import com.jamhour.core.poster.buildJobPoster
+import com.jamhour.util.loggerFactory
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import java.net.URI
@@ -15,6 +16,8 @@ abstract class AbstractJobsProvider(
 
     // ! TODO: find a way to invalidate this cashed data
     override val cachedJobs: Deferred<List<Job>> by lazy { async { getJobs() } }
+    protected val logger = loggerFactory(this::class.java)
+
     var providerStatusProperty = JobProviderStatus.PROCESSING; protected set
 
     override fun equals(other: Any?): Boolean {

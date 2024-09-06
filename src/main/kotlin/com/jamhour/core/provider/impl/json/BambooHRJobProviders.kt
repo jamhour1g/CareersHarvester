@@ -1,6 +1,5 @@
 package com.jamhour.core.provider.impl.json
 
-import com.jamhour.util.loggerFactory
 import com.jamhour.util.toURI
 
 class Userpilot : AbstractBambooHRJobProvider(
@@ -9,7 +8,6 @@ class Userpilot : AbstractBambooHRJobProvider(
     providerURI,
     careerPageLink
 ) {
-    override val logger = loggerFactory(Userpilot::class.java)
 
     override fun filterJob(job: BambooHRJob): Boolean {
         val isInPalestine = job.location.toJobLocation() == LOCATION
@@ -32,8 +30,6 @@ class Foothill : AbstractBambooHRJobProvider(
     providerURI,
     careerPageLink
 ) {
-
-    override val logger = loggerFactory(Foothill::class.java)
 
     override fun filterJob(job: BambooHRJob): Boolean = job.departmentId == SOFTWARE_DEPARTMENT_CODE
 

@@ -7,7 +7,6 @@ import com.jamhour.core.provider.AbstractJobsProvider
 import com.jamhour.core.provider.JobProviderStatus
 import com.jamhour.util.URISerializer
 import com.jamhour.util.ZonedDateTimeSerializer
-import com.jamhour.util.loggerFactory
 import com.jamhour.util.sendAsync
 import com.jamhour.util.toBodyHandler
 import com.jamhour.util.toURI
@@ -29,7 +28,7 @@ class AsalTech : AbstractJobsProvider(
 ) {
 
     override suspend fun getJobs(): List<Job> = coroutineScope {
-        asalLogger.info { "Starting job retrieval process for $providerName from $JOBS_API_ENDPOINT." }
+        logger.info { "Starting job retrieval process for $providerName from $JOBS_API_ENDPOINT." }
 
         val jsonSerializer = Json {
             ignoreUnknownKeys = true
@@ -41,36 +40,35 @@ class AsalTech : AbstractJobsProvider(
             }
         }
 
-        asalLogger.info { "Sending HTTP request to fetch job listings from $JOBS_API_ENDPOINT." }
+        logger.info { "Sending HTTP request to fetch job listings from $JOBS_API_ENDPOINT." }
 
         val response = HttpRequest.newBuilder()
             .uri(JOBS_API_ENDPOINT.toURI())
             .GET()
             .build()
-            .sendAsync(jsonSerializer.toBodyHandler<AsalJobsResponse>(asalLogger))
+            .sendAsync(jsonSerializer.toBodyHandler<AsalJobsResponse>(logger))
 
         if (response == null) {
-            asalLogger.severe { "Failed to receive job listings from $JOBS_API_ENDPOINT. The response was null." }
+            logger.severe { "Failed to receive job listings from $JOBS_API_ENDPOINT. The response was null." }
             providerStatusProperty = JobProviderStatus.FAILED
             return@coroutineScope emptyList()
         }
 
-        asalLogger.info { "Successfully received job listings from $JOBS_API_ENDPOINT. Number of jobs found: ${response.offers.size}" }
+        logger.info { "Successfully received job listings from $JOBS_API_ENDPOINT. Number of jobs found: ${response.offers.size}" }
         providerStatusProperty = JobProviderStatus.ACTIVE
 
         val filteredJobs = response.offers.filter { it.categoryCode == AsalJobsResponse.IT_CATEGORY_CODE }
 
         if (filteredJobs.isEmpty()) {
-            asalLogger.warning { "No IT category jobs found in the response from $JOBS_API_ENDPOINT." }
+            logger.warning { "No IT category jobs found in the response from $JOBS_API_ENDPOINT." }
         } else {
-            asalLogger.info { "Filtering complete. ${filteredJobs.size} IT job(s) found." }
+            logger.info { "Filtering complete. ${filteredJobs.size} IT job(s) found." }
         }
 
         filteredJobs.map { it.toJob(getDefaultJobPoster()) }
     }
 
     companion object {
-        private val asalLogger = loggerFactory(AsalTech::class.java)
         private const val LOCATION = "Ramallah,rawabi"
         private const val JOBS_API_ENDPOINT = "https://career.recruitee.com/api/c/40756/widget"
     }

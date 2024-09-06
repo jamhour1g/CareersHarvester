@@ -6,7 +6,6 @@ import com.jamhour.core.poster.JobPoster
 import com.jamhour.core.provider.AbstractJobsProvider
 import com.jamhour.core.provider.JobProviderStatus
 import com.jamhour.util.ZonedDateTimeSerializer
-import com.jamhour.util.loggerFactory
 import com.jamhour.util.sendAsync
 import com.jamhour.util.toBodyHandler
 import com.jamhour.util.toURI
@@ -30,7 +29,7 @@ class Harri : AbstractJobsProvider(
 ) {
 
     override suspend fun getJobs(): List<Job> = coroutineScope {
-        harriLogger.info { "Starting job retrieval process for $providerName from $JOBS_API_ENDPOINT." }
+        logger.info { "Starting job retrieval process for $providerName from $JOBS_API_ENDPOINT." }
 
         val jsonSerializer = Json {
             ignoreUnknownKeys = true
@@ -42,17 +41,17 @@ class Harri : AbstractJobsProvider(
             }
         }
 
-        harriLogger.info { "Sending HTTP request to fetch job listings from $JOBS_API_ENDPOINT." }
+        logger.info { "Sending HTTP request to fetch job listings from $JOBS_API_ENDPOINT." }
 
         val harriJobsFormat = HttpRequest.newBuilder()
             .uri(JOBS_API_ENDPOINT.toURI())
             .GET()
             .build()
-            .sendAsync(jsonSerializer.toBodyHandler<JobsFormat>(harriLogger))
+            .sendAsync(jsonSerializer.toBodyHandler<JobsFormat>(logger))
 
 
         if (harriJobsFormat == null) {
-            harriLogger.severe { "Failed to receive job listings from $JOBS_API_ENDPOINT. The response was null." }
+            logger.severe { "Failed to receive job listings from $JOBS_API_ENDPOINT. The response was null." }
             providerStatusProperty = JobProviderStatus.FAILED
             return@coroutineScope emptyList()
         }
@@ -60,20 +59,19 @@ class Harri : AbstractJobsProvider(
         providerStatusProperty = JobProviderStatus.ACTIVE
 
         val jobs = harriJobsFormat.data.harriJobs
-        harriLogger.info { "Successfully received job listings from $JOBS_API_ENDPOINT. Number of jobs found: ${jobs.size}" }
+        logger.info { "Successfully received job listings from $JOBS_API_ENDPOINT. Number of jobs found: ${jobs.size}" }
 
         if (jobs.isEmpty()) {
-            harriLogger.warning { "No jobs were found in the response from $JOBS_API_ENDPOINT." }
+            logger.warning { "No jobs were found in the response from $JOBS_API_ENDPOINT." }
             return@coroutineScope emptyList()
         }
 
-        harriLogger.info { "Processing and fetching details for each job." }
+        logger.info { "Processing and fetching details for each job." }
         harriJobsFormat.data.harriJobs
-            .map { it.getJobDetails(harriLogger, getDefaultJobPoster(), jsonSerializer) }
+            .map { it.getJobDetails(logger, getDefaultJobPoster(), jsonSerializer) }
     }
 
     companion object {
-        private val harriLogger = loggerFactory(Harri::class.java)
         private const val JOBS_API_ENDPOINT = "https://gateway.harri.com/core-reader/api/v1/profile/brand/646003"
         private const val LOCATION = "Palestine, Ramallah, Sateh Marhaba, Al-bireh"
     }

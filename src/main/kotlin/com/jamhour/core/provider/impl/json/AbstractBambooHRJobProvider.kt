@@ -28,8 +28,6 @@ abstract class AbstractBambooHRJobProvider(
     val careerPageLink: URI
 ) : AbstractJobsProvider(providerName, location, providerURI) {
 
-    protected open val logger = loggerFactory(AbstractBambooHRJobProvider::class.java)
-
     private val jobListEndpoint: URI = "$careerPageLink/list".toURI()
 
     init {
