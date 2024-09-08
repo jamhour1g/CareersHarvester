@@ -1,6 +1,6 @@
 plugins {
-    kotlin("jvm") version "2.0.20-RC2"
-    kotlin("plugin.serialization") version "2.0.0"
+    kotlin("jvm") version "2.0.20"
+    kotlin("plugin.serialization") version "2.0.20"
 }
 
 group = "com.jamhour"
@@ -11,10 +11,10 @@ repositories {
 }
 
 dependencies {
-    val coroutinesVersion = "1.9.0-RC"
-    val serializationVersion = "1.7.1"
+    val coroutinesVersion = "1.9.0-RC.2"
+    val serializationVersion = "1.7.2"
     val jsoupVersion = "1.18.1"
-    val kotlinStdLibVersion = "2.0.10"
+    val kotlinStdLibVersion = "2.0.20"
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
