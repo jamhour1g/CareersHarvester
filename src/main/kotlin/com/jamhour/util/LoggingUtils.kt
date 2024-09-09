@@ -35,9 +35,8 @@ private fun Logger.addFileHandler(loggerForClass: Class<*>): Logger {
     val fileFormat = "logs/${loggerForClass.packageName}/${loggerForClass.simpleName}"
     val filePath = Path(fileFormat)
 
-    createLogDirectory(filePath)
-
     if (isFileLoggingEnabled) {
+        createLogDirectory(filePath)
         addHandler(
             FileHandler("$fileFormat/$timeFormat.log", true)
                 .apply {
