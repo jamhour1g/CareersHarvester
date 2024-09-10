@@ -82,7 +82,6 @@ private data class AsalJobsResponse(val offers: List<AsalJob>) {
     }
 }
 
-// TODO : add default values and allow for coerce null values in the json builder
 @Serializable
 private data class AsalJob(
     @SerialName("published_at") @Contextual val publishDate: ZonedDateTime,
@@ -93,9 +92,12 @@ private data class AsalJob(
     @SerialName("careers_url") @Serializable(with = URISerializer::class) val jobUri: URI,
     val description: String
 ) {
-    fun toJob(jobPoster: JobPoster) = buildJob(jobPoster, jobUri, title, location) {
-        jobDescription = description
-        jobRequirements = requirements ?: ""
-        jobPublishDate = publishDate.toLocalDate()
+    fun toJob(jobPoster: JobPoster): Job {
+        val reversedLocation = location.split(", ").asReversed().joinToString()
+        return buildJob(jobPoster, jobUri, title, reversedLocation) {
+            jobDescription = description
+            jobRequirements = requirements ?: ""
+            jobPublishDate = publishDate.toLocalDate()
+        }
     }
 }
