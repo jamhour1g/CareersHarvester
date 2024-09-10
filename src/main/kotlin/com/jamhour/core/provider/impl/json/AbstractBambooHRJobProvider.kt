@@ -199,7 +199,11 @@ internal data class BambooHRLocation(
     val city: String? = "",
     val state: String? = ""
 ) {
-    fun toJobLocation(): String = "$state,$city"
+    fun toJobLocation(): String = when {
+        city != null && state != null -> "$city, $state"
+        city == null && state == null -> "Remote"
+        else -> "Not available"
+    }
 }
 
 @Serializable
