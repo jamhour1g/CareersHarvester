@@ -45,7 +45,7 @@ fun buildJob(
         jobLocation = jobLocation
     )
 
-    builderAction?.let { jobBuilderImpl.apply { it } }
+    builderAction?.let { jobBuilderImpl.apply { it() } }
 
     return jobBuilderImpl.build()
 }

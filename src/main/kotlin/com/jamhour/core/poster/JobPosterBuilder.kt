@@ -37,7 +37,7 @@ fun buildJobPoster(
         location = location
     )
 
-    builderAction?.let { jobPosterBuilderImpl.apply { it } }
+    builderAction?.let { jobPosterBuilderImpl.apply { it() } }
 
     return jobPosterBuilderImpl.build()
 }
