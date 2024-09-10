@@ -20,8 +20,10 @@ import java.net.http.HttpResponse
 import java.time.LocalDate
 import java.time.Month
 import java.time.Year
+import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
+import java.util.logging.Level
 
 class JobsDotPS : AbstractJobsProvider(
     "Jobs.ps",
@@ -43,7 +45,10 @@ class JobsDotPS : AbstractJobsProvider(
                 runCatching {
                     processJobListing(jobListing)
                 }.onFailure {
-                    logger.severe { "Error processing job listing: ${jobListing.attr("href")}. Exception: ${it.message}" }
+                    logger.log(
+                        Level.SEVERE,
+                        it
+                    ) { "Error processing job listing: ${jobListing.attr("href")}. Exception: ${it.message}" }
                 }.getOrNull()
             }
         }.awaitAll()
@@ -106,7 +111,7 @@ class JobsDotPS : AbstractJobsProvider(
             runCatching {
                 parseLocalDateFromProvider(dateText)
             }.onFailure {
-                logger.warning { "Failed to parse publish date: $it. Error: ${it.message}" }
+                logger.log(Level.WARNING, it) { "Failed to parse publish date: $it. Error: ${it.message}" }
             }.getOrNull()
         }
     }
@@ -141,26 +146,34 @@ class JobsDotPS : AbstractJobsProvider(
         val posterPageHtml = fetch(posterPageLink)
         val posterPageDoc = Jsoup.parse(posterPageHtml, posterPageLink)
 
-        buildJobPosterFromPage(posterPageDoc)
+        buildJobPosterFromPage(posterPageDoc, posterPageLink)
     }
 
-    private fun buildJobPosterFromPage(doc: Document): JobPoster? {
+    private fun buildJobPosterFromPage(doc: Document, posterPageLink: String): JobPoster? {
         val companyTitle = doc.selectFirst(COMPANY_TITLE_SELECTOR)?.text() ?: return null
         val companyWebsite = doc.selectFirst(COMPANY_WEBSITE_SELECTOR)?.text() ?: return null
         val companyLocation = doc.selectFirst(COMPANY_LOCATION_SELECTOR)?.text() ?: return null
-        val companyEstablishmentDate = doc.selectFirst(COMPANY_ESTABLISHMENT_DATE_SELECTOR)?.text() ?: return null
+        val companyEstablishmentDate =
+            doc.selectFirst(COMPANY_ESTABLISHMENT_DATE_SELECTOR)?.text()?.trim() ?: return null
 
         logger.info { "Building JobPoster for company: $companyTitle at $companyWebsite" }
+
         return buildJobPoster(this@JobsDotPS, companyTitle, companyLocation) {
             website = companyWebsite.toURI()
-            establishmentDate = LocalDate.parse(companyEstablishmentDate)
+            uriOnProvider = posterPageLink.toURI()
+            establishmentDate = when {
+                companyEstablishmentDate.isBlank() -> null
+                else -> LocalDate.parse(companyEstablishmentDate)
+            }
         }
     }
 
     private fun buildJobFromDetails(
         doc: Document, jobPoster: JobPoster, jobUrl: String, publishDate: LocalDate
     ): Job? {
-        val descriptionText = doc.selectFirst(DESCRIPTION_TAG_SELECTOR)?.text() ?: return null
+        val descriptionText = doc.selectFirst(DESCRIPTION_TAG_SELECTOR)?.text()
+            ?.replace(" Jobs.ps, Ltd. All Rights Reserved.", "")
+            ?: return null
         val requirementsText = doc.selectFirst(REQUIREMENTS_TAG_SELECTOR)?.text() ?: return null
         val jobDeadlineText = doc.selectFirst(JOB_DEADLINE_SELECTOR)?.text() ?: return null
         val jobVacancyTypeText = doc.selectFirst(JOB_VACANCY_TYPE_SELECTOR)?.text() ?: return null
@@ -181,7 +194,7 @@ class JobsDotPS : AbstractJobsProvider(
         ) {
             jobDescription = descriptionText
             jobRequirements = requirementsText
-            jobDeadline = LocalDate.parse(jobDeadlineText)
+            jobDeadline = LocalDate.parse(jobDeadlineText, deadLineFormatter)
             jobInstructionsOnHowToApply = jobInstructionsText
             typeOfVacancy = getTypeOfVacancy(jobVacancyTypeText)
             jobSalary = salaryText
@@ -203,6 +216,7 @@ class JobsDotPS : AbstractJobsProvider(
     }
 
     companion object {
+        private val deadLineFormatter = DateTimeFormatter.ofPattern("dd - MMM - yyyy")
         private const val IT_JOBS_PAGE_ON_PROVIDER = "https://www.jobs.ps/en/categories/it-jobs"
         private const val JOB_LIST_CLASS_NAME = "list-3--title list-3--row"
         private const val JOB_PUBLISH_DATE_HOME_PAGE = ".list-3--cell-1.list-3--cell-4.align-right"
