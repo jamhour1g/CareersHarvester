@@ -72,11 +72,12 @@ class Foras : AbstractJobsProvider(
 
         val jobTitle = extractJobTitle(jobElement)
         val jobDetailsLink = extractJobDetailsLink(jobElement)
+        val fullJobLink = providerURI?.let { "$it$jobDetailsLink".toURI() } ?: return null
         val description = extractJobDescription(jobElement)
 
         logger.info { "Processing job: $jobTitle at $jobLocation, Deadline: $deadline" }
 
-        return buildJob(getDefaultJobPoster(), jobDetailsLink.toURI(), jobTitle, jobLocation) {
+        return buildJob(getDefaultJobPoster(), fullJobLink, jobTitle, jobLocation) {
             jobDeadline = deadline
             jobDescription = description
         }
