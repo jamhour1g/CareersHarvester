@@ -99,7 +99,10 @@ class Foras : AbstractJobsProvider(
             ?.trim().orEmpty()
 
     private fun extractJobDetailsLink(jobElement: Element) =
-        jobElement.getElementsByTag("a").firstOrNull()?.attr("href").orEmpty()
+        jobElement.getElementsByTag("a")
+            .filter { it.hasAttr("href") && it.attr("href").startsWith("/foras/") }
+            .firstOrNull()?.attr("href")
+            .orEmpty()
 
     private fun extractJobDescription(jobElement: Element) =
         jobElement.getElementsByClass("line-clamp-2 md:line-clamp-3 text-sm h-[2.5rem] md:h-[3.5rem] mb-2")
