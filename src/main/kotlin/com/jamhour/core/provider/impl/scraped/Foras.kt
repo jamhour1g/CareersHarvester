@@ -3,34 +3,46 @@ package com.jamhour.core.provider.impl.scraped
 import com.jamhour.core.job.Job
 import com.jamhour.core.job.buildJob
 import com.jamhour.core.provider.AbstractJobsProvider
+import com.jamhour.core.provider.JobProviderStatus
 import com.jamhour.util.sendAsync
 import com.jamhour.util.toURI
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlin.time.Duration.Companion.minutes
 
-class Foras : AbstractJobsProvider(
+class Foras() : AbstractJobsProvider(
     "Foras.ps",
     "Ramallah, Palestine",
-    "https://foras.ps".toURI()
+    "https://foras.ps".toURI(),
+    1.minutes
 ) {
 
-    override suspend fun getJobs(): List<Job> = coroutineScope {
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun getJobs(): Flow<Job> = flow {
         logger.info { "Fetching job listings from $providerName at $FORAS_JOB_URL" }
 
-        val jobListingsHtml = fetchJobListingsHtml(FORAS_JOB_URL)
-        val jobElements = parseJobElements(jobListingsHtml)
-        logger.info { "Found ${jobElements.size} job elements to process" }
+        val html = fetchJobListingsHtml(FORAS_JOB_URL)
+        val elements = parseJobElements(html)
+        logger.info { "Found ${elements.size} jobs to process" }
 
-        jobElements.mapNotNull { jobElement ->
-            runCatching { processJobElement(jobElement) }
-                .onFailure { logger.severe { "Error processing job element: ${jobElement.text()}" } }
-                .getOrNull()
-        }
+        val concurrentConvert = elements.asFlow()
+            .flatMapMerge { element ->
+                flowOf(
+                    runCatching { processJobElement(element) }
+                        .onFailure { e -> logger.severe { "Error processing job element: ${e.message}" } }
+                        .getOrNull()
+                )
+            }.filterNotNull()
+        emitAll(concurrentConvert)
+    }.catch { e ->
+        providerStatusProperty = JobProviderStatus.FAILED
+        logger.severe { "Flow failed: ${e.message}" }
     }
 
     private suspend fun fetchJobListingsHtml(url: String): String {
@@ -52,30 +64,27 @@ class Foras : AbstractJobsProvider(
 
     private fun processJobElement(jobElement: Element): Job? {
         val jobLocation = extractJobLocation(jobElement)
-        val deadline = extractJobDeadline(jobElement, jobLocation).let {
-            runCatching {
-                LocalDate.parse(it, DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-            }.onFailure {
-                logger.severe { "Error parsing deadline: $it" }
-            }.getOrNull()
-        }
+        val deadlineStr = extractJobDeadline(jobElement, jobLocation)
 
-        if (deadline == null) {
-            logger.info { "Skipping job due to missing deadline" }
-            return null
+        val deadline = runCatching {
+            LocalDate.parse(deadlineStr, DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+        }.onFailure {
+            logger.severe { "Error parsing deadline '$deadlineStr': ${it.message}" }
+        }.getOrNull() ?: return null.also {
+            logger.info { "Skipping job with invalid deadline: '$deadlineStr'" }
         }
 
         if (deadline.isBefore(LocalDate.now())) {
-            logger.info { "Skipping job because deadline has passed: $deadline" }
+            logger.info { "Skipping expired job (deadline: $deadline)" }
             return null
         }
 
         val jobTitle = extractJobTitle(jobElement)
         val jobDetailsLink = extractJobDetailsLink(jobElement)
-        val fullJobLink = providerURI?.let { "$it$jobDetailsLink".toURI() } ?: return null
+        val fullJobLink = providerURI?.resolve(jobDetailsLink) ?: return null
         val description = extractJobDescription(jobElement)
 
-        logger.info { "Processing job: $jobTitle at $jobLocation, Deadline: $deadline" }
+        logger.info { "Processed job: '$jobTitle' at '$jobLocation', Deadline: $deadline" }
 
         return buildJob(getDefaultJobPoster(), fullJobLink, jobTitle, jobLocation) {
             jobDeadline = deadline
@@ -100,9 +109,8 @@ class Foras : AbstractJobsProvider(
 
     private fun extractJobDetailsLink(jobElement: Element) =
         jobElement.getElementsByTag("a")
-            .filter { it.hasAttr("href") && it.attr("href").startsWith("/foras/") }
-            .firstOrNull()?.attr("href")
-            .orEmpty()
+            .firstOrNull { it.hasAttr("href") && it.attr("href").startsWith("/foras/") }
+            ?.attr("href").orEmpty()
 
     private fun extractJobDescription(jobElement: Element) =
         jobElement.getElementsByClass("line-clamp-2 md:line-clamp-3 text-sm h-[2.5rem] md:h-[3.5rem] mb-2")
@@ -110,7 +118,7 @@ class Foras : AbstractJobsProvider(
 
     companion object {
         private const val FORAS_JOB_URL =
-            "https://foras.ps/Foras?SearchFilter.Filter.Search=&SearchFilter.Specialty=1&SearchFilter.Specialty=8&SearchFilter.Specialty=11&SearchFilter.Category=3&SearchFilter.Filter.DatePosted=AnyTime&SearchFilter.Filter.OrderBy=date&culture=en"
+            "https://foras.ps/opportunities?category=3&major=1,11&datePosted=AnyTime&orderBy=date"
         private const val JOB_CONTAINER_SELECTOR =
             "body > div.bg-primary-gray > main > div > div.container.mx-auto.mt-0 > div.row.no-gutters.gap-x-8.gap-y-5 > div.col-md-8 > div.grid.md\\:grid-cols-2.grid-cols-1.gap-x-5.gap-y-5"
     }

@@ -5,12 +5,8 @@ import com.jamhour.core.job.buildJob
 import com.jamhour.core.poster.JobPoster
 import com.jamhour.core.provider.AbstractJobsProvider
 import com.jamhour.core.provider.JobProviderStatus
-import com.jamhour.util.URISerializer
-import com.jamhour.util.ZonedDateTimeSerializer
-import com.jamhour.util.sendAsync
-import com.jamhour.util.toBodyHandler
-import com.jamhour.util.toURI
-import kotlinx.coroutines.coroutineScope
+import com.jamhour.util.*
+import kotlinx.coroutines.flow.*
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -20,15 +16,17 @@ import java.net.URI
 import java.net.http.HttpRequest
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import kotlin.time.Duration.Companion.minutes
 
-class AsalTech : AbstractJobsProvider(
+class AsalTech() : AbstractJobsProvider(
     "AsalTech",
     LOCATION,
-    "https://www.asaltech.com/".toURI()
+    "https://www.asaltech.com/".toURI(),
+    1.minutes
 ) {
 
-    override suspend fun getJobs(): List<Job> = coroutineScope {
-        logger.info { "Starting job retrieval process for $providerName from $JOBS_API_ENDPOINT." }
+    override fun getJobs(): Flow<Job> = flow {
+        logger.info { "Fetching jobs from $JOBS_API_ENDPOINT." }
 
         val jsonSerializer = Json {
             ignoreUnknownKeys = true
@@ -40,33 +38,34 @@ class AsalTech : AbstractJobsProvider(
             }
         }
 
-        logger.info { "Sending HTTP request to fetch job listings from $JOBS_API_ENDPOINT." }
-
         val response = HttpRequest.newBuilder()
             .uri(JOBS_API_ENDPOINT.toURI())
             .GET()
             .build()
             .sendAsync(jsonSerializer.toBodyHandler<AsalJobsResponse>(logger))
+            ?: throw IllegalStateException("Null response from $JOBS_API_ENDPOINT")
 
-        if (response == null) {
-            logger.severe { "Failed to receive job listings from $JOBS_API_ENDPOINT. The response was null." }
-            providerStatusProperty = JobProviderStatus.FAILED
-            return@coroutineScope emptyList()
-        }
-
-        logger.info { "Successfully received job listings from $JOBS_API_ENDPOINT. Number of jobs found: ${response.offers.size}" }
         providerStatusProperty = JobProviderStatus.ACTIVE
 
-        val filteredJobs = response.offers.filter { it.categoryCode == AsalJobsResponse.IT_CATEGORY_CODE }
-
-        if (filteredJobs.isEmpty()) {
-            logger.warning { "No IT category jobs found in the response from $JOBS_API_ENDPOINT." }
-        } else {
-            logger.info { "Filtering complete. ${filteredJobs.size} IT job(s) found." }
+        val cutoffDate = ZonedDateTime.now().minusMonths(2)
+        val filteredJobs = response.offers.filter {
+            it.categoryCode == AsalJobsResponse.IT_CATEGORY_CODE &&
+                    it.publishDate.isAfter(cutoffDate)
         }
 
-        filteredJobs.map { it.toJob(getDefaultJobPoster()) }
+        if (filteredJobs.isEmpty()) {
+            logger.warning { "No recent IT jobs found at $JOBS_API_ENDPOINT." }
+        } else {
+            logger.info { "Found ${filteredJobs.size} recent IT jobs." }
+        }
+
+        emitAll(filteredJobs.map { it.toJob(getDefaultJobPoster()) }.asFlow())
+
+    }.catch { e ->
+        providerStatusProperty = JobProviderStatus.FAILED
+        logger.severe { "Job retrieval error: ${e.message}" }
     }
+
 
     companion object {
         private const val LOCATION = "Ramallah,rawabi"

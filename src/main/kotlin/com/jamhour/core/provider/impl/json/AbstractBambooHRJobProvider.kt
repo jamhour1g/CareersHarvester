@@ -5,12 +5,16 @@ import com.jamhour.core.job.impl.JobBuilderImpl
 import com.jamhour.core.poster.JobPoster
 import com.jamhour.core.provider.AbstractJobsProvider
 import com.jamhour.core.provider.JobProviderStatus
-import com.jamhour.util.*
-import kotlinx.coroutines.*
+import com.jamhour.util.LocalDateSerializer
+import com.jamhour.util.sendAsync
+import com.jamhour.util.toBodyHandler
+import com.jamhour.util.toURI
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.*
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.StringFormat
-import kotlinx.serialization.Transient
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
@@ -20,13 +24,15 @@ import java.net.http.HttpResponse
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.logging.Logger
+import kotlin.time.Duration
 
 abstract class AbstractBambooHRJobProvider(
     override val providerName: String,
     override val location: String,
     override val providerURI: URI,
-    val careerPageLink: URI
-) : AbstractJobsProvider(providerName, location, providerURI) {
+    val careerPageLink: URI,
+    expiryDuration: Duration
+) : AbstractJobsProvider(providerName, location, providerURI, expiryDuration) {
 
     private val jobListEndpoint: URI = "$careerPageLink/list".toURI()
 
@@ -41,31 +47,27 @@ abstract class AbstractBambooHRJobProvider(
      */
     internal open fun filterJob(job: BambooHRJob): Boolean = true
 
-    override suspend fun getJobs(): List<Job> = coroutineScope {
-        logger.info { "Starting job retrieval process for $providerName from $careerPageLink." }
+    override fun getJobs(): Flow<Job> = flow {
+        logger.info { "Starting job retrieval for $providerName from $careerPageLink." }
 
         val jsonParser = Json {
             ignoreUnknownKeys = true
             serializersModule = SerializersModule {
-                contextual(
-                    LocalDate::class,
-                    LocalDateSerializer(BambooHRJobsResponse.dateFormatter)
-                )
+                contextual(LocalDate::class, LocalDateSerializer(BambooHRJobsResponse.dateFormatter))
             }
         }
 
         val jobResponse = fetchJobList(jsonParser)
+            ?: throw IllegalStateException("Failed to retrieve job listings.")
 
-        if (jobResponse == null) {
-            logger.warning { "Job retrieval failed. Setting provider status to FAILED." }
-            providerStatusProperty = JobProviderStatus.FAILED
-            return@coroutineScope emptyList()
-        }
-
-        logger.info { "Job retrieval successful. Setting provider status to ACTIVE." }
         providerStatusProperty = JobProviderStatus.ACTIVE
-        fetchFilteredJobDetails(jobResponse, jsonParser)
+
+        emitAll(fetchFilteredJobDetails(jobResponse, jsonParser))
+    }.catch { e ->
+        providerStatusProperty = JobProviderStatus.FAILED
+        logger.severe { "Exception during job retrieval: ${e.message}" }
     }
+
 
     private fun StringFormat.toJobsResponseBodyHandler(careerPageLink: URI) = HttpResponse.BodyHandler {
         HttpResponse.BodySubscribers.mapping(
@@ -109,21 +111,26 @@ abstract class AbstractBambooHRJobProvider(
         return jobResponse
     }
 
-    private suspend fun fetchFilteredJobDetails(
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun fetchFilteredJobDetails(
         jobsResponse: BambooHRJobsResponse,
         jsonParser: StringFormat,
-    ): List<Job> {
+    ): Flow<Job> {
         logger.info { "Filtering job listings. Total jobs retrieved: ${jobsResponse.result.size}." }
 
         val filteredJobs = jobsResponse.result.filter { filterJob(it) }
 
         if (filteredJobs.isEmpty()) {
             logger.warning { "No job listings matched the filter criteria." }
-            return emptyList()
+            return emptyFlow()
         }
 
         logger.info { "Found ${filteredJobs.size} job(s) after filtering. Fetching details for each job." }
-        return filteredJobs.map { it.retrieveJobDetails(logger, getDefaultJobPoster(), jsonParser) }.awaitAll()
+        return filteredJobs.asFlow()
+            .flatMapMerge { job ->
+                flowOf(job.retrieveJobDetails(logger, getDefaultJobPoster(), jsonParser))
+            }
+
     }
 }
 
@@ -141,17 +148,14 @@ internal data class BambooHRJob(
     val bambooHRPageLink: String,
     val id: Long,
     val jobOpeningName: String,
-    val departmentId: Int,
+    val departmentId: Int?,
     val employmentStatusLabel: String,
     val isRemote: Boolean?,
     val location: BambooHRLocation
 ) {
 
-    @Transient
-    val jobDetailURI: URI = "$bambooHRPageLink/$id".toURI()
-
-    @Transient
-    val jobDetailsEndpointURI: URI = "$jobDetailURI/detail".toURI()
+    val jobDetailURI: URI by lazy { "$bambooHRPageLink/$id".toURI() }
+    val jobDetailsEndpointURI: URI by lazy { "$jobDetailURI/detail".toURI() }
 
     fun toJob(
         jobPoster: JobPoster,
@@ -170,27 +174,25 @@ internal data class BambooHRJob(
         logger: Logger,
         jobPoster: JobPoster,
         jsonParser: StringFormat
-    ): Deferred<Job> = coroutineScope {
-        async {
-            logger.info { "Fetching job details for job ID $id from $jobDetailsEndpointURI." }
+    ): Job = coroutineScope {
+        logger.info { "Fetching job details for job ID $id from $jobDetailsEndpointURI." }
 
-            val jobDetailsRequest = HttpRequest.newBuilder()
-                .uri(jobDetailsEndpointURI)
-                .GET()
-                .build()
+        val jobDetailsRequest = HttpRequest.newBuilder()
+            .uri(jobDetailsEndpointURI)
+            .GET()
+            .build()
 
-            val jobDetailsResponse = jobDetailsRequest.sendAsync(
-                jsonParser.toBodyHandler<BambooHRJobDetails>(logger)
-            )
+        val jobDetailsResponse = jobDetailsRequest.sendAsync(
+            jsonParser.toBodyHandler<BambooHRJobDetails>(logger)
+        )
 
-            if (jobDetailsResponse == null) {
-                logger.severe { "Failed to fetch job details for job ID $id. Response was null." }
-            } else {
-                logger.info { "Successfully retrieved job details for job ID $id." }
-            }
-
-            toJob(jobPoster, jobDetailsResponse)
+        if (jobDetailsResponse == null) {
+            logger.severe { "Failed to fetch job details for job ID $id. Response was null." }
+        } else {
+            logger.info { "Successfully retrieved job details for job ID $id." }
         }
+
+        toJob(jobPoster, jobDetailsResponse)
     }
 }
 

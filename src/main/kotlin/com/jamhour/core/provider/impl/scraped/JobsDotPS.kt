@@ -9,9 +9,9 @@ import com.jamhour.core.provider.AbstractJobsProvider
 import com.jamhour.core.provider.JobProviderStatus
 import com.jamhour.util.sendAsync
 import com.jamhour.util.toURI
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -22,39 +22,44 @@ import java.time.Month
 import java.time.Year
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
-import java.util.Locale
+import java.util.*
 import java.util.logging.Level
+import kotlin.time.Duration.Companion.minutes
 
-class JobsDotPS : AbstractJobsProvider(
+class JobsDotPS() : AbstractJobsProvider(
     "Jobs.ps",
     "Ramallah",
-    "https://www.jobs.ps/".toURI()
+    "https://www.jobs.ps/".toURI(),
+    1.minutes
 ) {
 
-    override suspend fun getJobs(): List<Job> = coroutineScope {
-        logger.info { "Starting to fetch job listings from $providerName from $IT_JOBS_PAGE_ON_PROVIDER" }
-        providerStatusProperty = JobProviderStatus.PROCESSING
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun getJobs(): Flow<Job> = flow {
+        logger.info { "Fetching job listings from $providerName at $IT_JOBS_PAGE_ON_PROVIDER" }
 
-        val jobListingsHtml = fetchJobListings()
-        val jobListings = parseJobListings(jobListingsHtml)
+        val html = fetchJobListings()
+        val listings = parseJobListings(html)
+        logger.info { "Parsed ${listings.size} job listings from $providerName" }
 
-        logger.info { "Parsed ${jobListings.size} job listings from $providerName" }
+        providerStatusProperty = JobProviderStatus.ACTIVE
 
-        jobListings.map { jobListing ->
-            async {
-                runCatching {
-                    processJobListing(jobListing)
-                }.onFailure {
-                    logger.log(
-                        Level.SEVERE,
-                        it
-                    ) { "Error processing job listing: ${jobListing.attr("href")}. Exception: ${it.message}" }
-                }.getOrNull()
+        val concurrentConvert = listings.asFlow()
+            .flatMapMerge { listing ->
+                flowOf(
+                    runCatching { processJobListing(listing) }
+                        .onFailure { e ->
+                            logger.severe { "Error processing job at URL ${listing.attr("href")}: ${e.message}" }
+                        }
+                        .getOrNull()
+                ).filterNotNull()
             }
-        }.awaitAll()
-            .filterNotNull()
-            .also { providerStatusProperty = JobProviderStatus.ACTIVE }
+
+        emitAll(concurrentConvert)
+    }.catch { e ->
+        providerStatusProperty = JobProviderStatus.FAILED
+        logger.severe { "Error in flow: ${e.message}" }
     }
+
 
     private suspend fun fetchJobListings(): String {
         logger.info { "Fetching job listings HTML from $IT_JOBS_PAGE_ON_PROVIDER" }
@@ -69,14 +74,15 @@ class JobsDotPS : AbstractJobsProvider(
     }
 
     private fun parseJobListings(html: String): List<Element> {
-        logger.info { "Parsing job listings from HTML" }
+        logger.info { "Parsing job listings from fetched HTML." }
         val parsedList = Jsoup.parse(html, IT_JOBS_PAGE_ON_PROVIDER).getElementsByClass(JOB_LIST_CLASS_NAME)
-        logger.info { "Found ${parsedList.size} job listings in the HTML" }
+        logger.info { "Found ${parsedList.size} job listings." }
         return parsedList
     }
 
     private suspend fun processJobListing(jobListing: Element): Job? {
         val jobDetailsUrl = jobListing.attr("href")
+        val fullJobUrl = providerURI?.resolve(jobDetailsUrl).toString()
         logger.info { "Processing job listing at URL: $jobDetailsUrl" }
 
         val jobDetailsHtml = fetch(jobDetailsUrl)
@@ -87,8 +93,15 @@ class JobsDotPS : AbstractJobsProvider(
             return null
         }
 
-        val publishDate = parsePublishDate(jobListing) ?: return null
-        val jobPoster = fetchJobPoster(jobDetailsDoc) ?: return null
+        val publishDate = parsePublishDate(jobListing) ?: run {
+            logger.warning { "Publish date missing or invalid at URL: $fullJobUrl. Skipping job." }
+            return null
+        }
+
+        val jobPoster = fetchJobPoster(jobDetailsDoc) ?: run {
+            logger.warning { "Job poster details missing at URL: $fullJobUrl. Skipping job." }
+            return null
+        }
 
         logger.info { "Building job object for listing at URL: $jobDetailsUrl" }
         return buildJobFromDetails(jobDetailsDoc, jobPoster, jobDetailsUrl, publishDate)
@@ -98,7 +111,8 @@ class JobsDotPS : AbstractJobsProvider(
         logger.info { "Fetching content from URL: $url" }
         return HttpRequest.newBuilder(url.toURI())
             .build()
-            .sendAsync(HttpResponse.BodyHandlers.ofString()).also {
+            .sendAsync(HttpResponse.BodyHandlers.ofString())
+            .also {
                 logger.info { "Successfully fetched content from URL: $url" }
             }
     }
@@ -118,9 +132,7 @@ class JobsDotPS : AbstractJobsProvider(
 
     private fun getStringMonthMap(): Map<String, Month> {
         return Month.entries.asSequence()
-            .associate {
-                it.getDisplayName(TextStyle.SHORT, Locale.getDefault()) to it
-            }
+            .associateBy { it.getDisplayName(TextStyle.SHORT, Locale.getDefault()) }
     }
 
     private fun parseLocalDateFromProvider(jobPublishDate: String): LocalDate {
@@ -150,6 +162,7 @@ class JobsDotPS : AbstractJobsProvider(
     }
 
     private fun buildJobPosterFromPage(doc: Document, posterPageLink: String): JobPoster? {
+        // ! TODO: there's a bug here where a job poster with a description fails to parse correctly due to selectors
         val companyTitle = doc.selectFirst(COMPANY_TITLE_SELECTOR)?.text() ?: return null
         val companyWebsite = doc.selectFirst(COMPANY_WEBSITE_SELECTOR)?.text() ?: return null
         val companyLocation = doc.selectFirst(COMPANY_LOCATION_SELECTOR)?.text() ?: return null

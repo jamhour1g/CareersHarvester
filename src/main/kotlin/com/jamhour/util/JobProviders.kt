@@ -8,11 +8,7 @@ import com.jamhour.core.provider.impl.json.Harri
 import com.jamhour.core.provider.impl.json.Userpilot
 import com.jamhour.core.provider.impl.scraped.Foras
 import com.jamhour.core.provider.impl.scraped.JobsDotPS
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.*
 import kotlinx.coroutines.future.future
 import java.util.concurrent.CompletableFuture
 
@@ -27,30 +23,21 @@ val jobProviders: List<JobsProvider> = listOf(
 )
 
 suspend fun getJobs() = coroutineScope {
-    jobProviders.map { it.cachedJobs }
-        .awaitAll()
-        .flatten()
-}
-
-suspend fun getJobsAsDeferred() = coroutineScope {
-    jobProviders.map { it.cachedJobs }
+    jobProviders.map {
+        async { it.cachedJobs.getValue() }
+    }.awaitAll().flatten()
 }
 
 suspend fun getJobsFilterBy(filter: (Job) -> Boolean) = getJobs().filter(filter)
 
 suspend fun getJobsFromProvider(provider: JobsProvider): List<Job> {
     validateProviderExists(provider)
-    return provider.cachedJobs.await()
-}
-
-fun getJobsFromProviderAsDeferred(provider: JobsProvider): Deferred<List<Job>> {
-    validateProviderExists(provider)
-    return provider.cachedJobs
+    return provider.cachedJobs.getValue()
 }
 
 suspend fun getJobsFromProviderFilterBy(jobProvider: JobsProvider, filter: (Job) -> Boolean): List<Job> {
     validateProviderExists(jobProvider)
-    return jobProviders.find { jobProvider == it }!!.cachedJobs.await().filter(filter)
+    return jobProviders.find { jobProvider == it }!!.cachedJobs.getValue().filter(filter)
 }
 
 private fun validateProviderExists(provider: JobsProvider) {

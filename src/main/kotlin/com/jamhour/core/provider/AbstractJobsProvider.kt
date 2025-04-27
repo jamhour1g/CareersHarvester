@@ -1,21 +1,25 @@
 package com.jamhour.core.provider
 
-import com.jamhour.core.job.Job
 import com.jamhour.core.poster.buildJobPoster
+import com.jamhour.util.SuspendingLazyWithExpiry
 import com.jamhour.util.loggerFactory
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.async
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.toList
 import java.net.URI
-import java.util.Objects
+import java.util.*
+import kotlin.time.Duration
 
 abstract class AbstractJobsProvider(
     override val providerName: String,
     override val location: String,
     override val providerURI: URI? = null,
+    expiryDuration: Duration
 ) : JobsProvider {
 
-    // ! TODO: find a way to invalidate this cashed data
-    override val cachedJobs: Deferred<List<Job>> by lazy { async { getJobs() } }
+    override val cachedJobs =
+        SuspendingLazyWithExpiry(expiryDuration) { getJobs().flowOn(Dispatchers.Default).toList() }
+
     protected val logger = loggerFactory(this::class.java)
 
     var providerStatusProperty = JobProviderStatus.PROCESSING; protected set

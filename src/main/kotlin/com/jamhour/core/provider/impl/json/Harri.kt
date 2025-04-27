@@ -9,67 +9,64 @@ import com.jamhour.util.ZonedDateTimeSerializer
 import com.jamhour.util.sendAsync
 import com.jamhour.util.toBodyHandler
 import com.jamhour.util.toURI
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.coroutineScope
-import kotlinx.serialization.Contextual
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.StringFormat
-import kotlinx.serialization.Transient
+import kotlinx.coroutines.flow.*
+import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import java.net.http.HttpRequest
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.logging.Logger
+import kotlin.time.Duration.Companion.minutes
 
-class Harri : AbstractJobsProvider(
+class Harri() : AbstractJobsProvider(
     "Harri",
     LOCATION,
-    "https://harri.com/".toURI()
+    "https://harri.com/".toURI(),
+    1.minutes
 ) {
 
-    override suspend fun getJobs(): List<Job> = coroutineScope {
-        logger.info { "Starting job retrieval process for $providerName from $JOBS_API_ENDPOINT." }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun getJobs(): Flow<Job> = flow {
+        logger.info { "Starting job retrieval from $JOBS_API_ENDPOINT." }
 
         val jsonSerializer = Json {
             ignoreUnknownKeys = true
             serializersModule = SerializersModule {
-                contextual(
-                    ZonedDateTime::class,
-                    ZonedDateTimeSerializer(JobsResponse.DATE_TIME_FORMAT)
-                )
+                contextual(ZonedDateTime::class, ZonedDateTimeSerializer(JobsResponse.DATE_TIME_FORMAT))
             }
         }
-
-        logger.info { "Sending HTTP request to fetch job listings from $JOBS_API_ENDPOINT." }
 
         val harriJobsFormat = HttpRequest.newBuilder()
             .uri(JOBS_API_ENDPOINT.toURI())
             .GET()
             .build()
             .sendAsync(jsonSerializer.toBodyHandler<JobsFormat>(logger))
-
-
-        if (harriJobsFormat == null) {
-            logger.severe { "Failed to receive job listings from $JOBS_API_ENDPOINT. The response was null." }
-            providerStatusProperty = JobProviderStatus.FAILED
-            return@coroutineScope emptyList()
-        }
+            ?: throw IllegalStateException("Null response from $JOBS_API_ENDPOINT")
 
         providerStatusProperty = JobProviderStatus.ACTIVE
 
         val jobs = harriJobsFormat.data.harriJobs
-        logger.info { "Successfully received job listings from $JOBS_API_ENDPOINT. Number of jobs found: ${jobs.size}" }
 
         if (jobs.isEmpty()) {
-            logger.warning { "No jobs were found in the response from $JOBS_API_ENDPOINT." }
-            return@coroutineScope emptyList()
+            logger.warning { "No jobs found at $JOBS_API_ENDPOINT." }
+            return@flow
         }
 
-        logger.info { "Processing and fetching details for each job." }
-        harriJobsFormat.data.harriJobs
-            .map { it.getJobDetails(logger, getDefaultJobPoster(), jsonSerializer) }
+        emitAll(
+            jobs.asFlow()
+                .flatMapMerge { job ->
+                    flowOf(job.getJobDetails(logger, getDefaultJobPoster(), jsonSerializer))
+                }
+        )
+
+    }.catch { e ->
+        providerStatusProperty = JobProviderStatus.FAILED
+        logger.severe { "Job retrieval failed: ${e.message}" }
     }
+
 
     companion object {
         private const val JOBS_API_ENDPOINT = "https://gateway.harri.com/core-reader/api/v1/profile/brand/646003"
@@ -83,7 +80,7 @@ private data class JobsFormat(val data: JobsResponse)
 @Serializable
 private data class JobsResponse(@SerialName("Jobs") val harriJobs: List<HarriJob>) {
     companion object {
-        val DATE_TIME_FORMAT = DateTimeFormatter.RFC_1123_DATE_TIME
+        val DATE_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.RFC_1123_DATE_TIME
     }
 }
 

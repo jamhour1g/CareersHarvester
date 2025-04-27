@@ -1,12 +1,14 @@
 package com.jamhour.core.provider.impl.json
 
 import com.jamhour.util.toURI
+import kotlin.time.Duration.Companion.minutes
 
 class Userpilot : AbstractBambooHRJobProvider(
     NAME,
     LOCATION,
     providerURI,
-    careerPageLink
+    careerPageLink,
+    1.minutes
 ) {
 
     override fun filterJob(job: BambooHRJob): Boolean {
@@ -28,7 +30,8 @@ class Foothill : AbstractBambooHRJobProvider(
     NAME,
     LOCATION,
     providerURI,
-    careerPageLink
+    careerPageLink,
+    1.minutes
 ) {
 
     override fun filterJob(job: BambooHRJob): Boolean = job.departmentId == SOFTWARE_DEPARTMENT_CODE

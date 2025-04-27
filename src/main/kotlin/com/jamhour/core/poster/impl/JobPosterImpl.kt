@@ -1,15 +1,14 @@
 package com.jamhour.core.poster.impl
 
-import com.jamhour.core.job.Job
 import com.jamhour.core.poster.JobPoster
 import com.jamhour.core.poster.JobPosterBusinessType
 import com.jamhour.core.poster.JobPosterContactInfo
 import com.jamhour.core.provider.JobProviderVerification
 import com.jamhour.core.provider.JobsProvider
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.async
+import com.jamhour.util.SuspendingLazyWithExpiry
 import java.net.URI
 import java.time.LocalDate
+import kotlin.time.Duration.Companion.minutes
 
 data class JobPosterImpl(
     override val posterName: String,
@@ -23,5 +22,7 @@ data class JobPosterImpl(
     override val posterProvider: JobsProvider,
     override val providerVerification: JobProviderVerification,
 ) : JobPoster {
-    override val cachedJobsFromPoster: Deferred<List<Job>> by lazy { async { getAllJobsFromProvider() } }
+    override val cachedJobsFromPoster = SuspendingLazyWithExpiry(10.minutes) {
+        getAllJobsFromProvider().filter { it.jobPoster == this }
+    }
 }
