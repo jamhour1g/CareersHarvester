@@ -16,13 +16,14 @@ import java.net.URI
 import java.net.http.HttpRequest
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
-import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
 
-class AsalTech() : AbstractJobsProvider(
+class AsalTech(expiryDuration: Duration = 1.days) : AbstractJobsProvider(
     "AsalTech",
     LOCATION,
     "https://www.asaltech.com/".toURI(),
-    1.minutes
+    expiryDuration
 ) {
 
     override fun getJobs(): Flow<Job> = flow {

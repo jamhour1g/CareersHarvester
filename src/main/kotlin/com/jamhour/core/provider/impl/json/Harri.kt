@@ -19,13 +19,14 @@ import java.net.http.HttpRequest
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.logging.Logger
-import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
 
-class Harri() : AbstractJobsProvider(
+class Harri(expiryDuration: Duration = 1.days) : AbstractJobsProvider(
     "Harri",
     LOCATION,
     "https://harri.com/".toURI(),
-    1.minutes
+    expiryDuration
 ) {
 
     @OptIn(ExperimentalCoroutinesApi::class)

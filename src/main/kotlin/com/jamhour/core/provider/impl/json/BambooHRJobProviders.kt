@@ -1,14 +1,15 @@
 package com.jamhour.core.provider.impl.json
 
 import com.jamhour.util.toURI
-import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
 
-class Userpilot : AbstractBambooHRJobProvider(
+class Userpilot(expiryDuration: Duration = 1.days) : AbstractBambooHRJobProvider(
     NAME,
     LOCATION,
     providerURI,
     careerPageLink,
-    1.minutes
+    expiryDuration
 ) {
 
     override fun filterJob(job: BambooHRJob): Boolean {
@@ -26,12 +27,12 @@ class Userpilot : AbstractBambooHRJobProvider(
     }
 }
 
-class Foothill : AbstractBambooHRJobProvider(
+class Foothill(expiryDuration: Duration = 1.days) : AbstractBambooHRJobProvider(
     NAME,
     LOCATION,
     providerURI,
     careerPageLink,
-    1.minutes
+    expiryDuration
 ) {
 
     override fun filterJob(job: BambooHRJob): Boolean = job.departmentId == SOFTWARE_DEPARTMENT_CODE

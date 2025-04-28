@@ -14,13 +14,14 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
 
-class Foras() : AbstractJobsProvider(
+class Foras(expiryDuration: Duration = 3.hours) : AbstractJobsProvider(
     "Foras.ps",
     "Ramallah, Palestine",
     "https://foras.ps".toURI(),
-    1.minutes
+    expiryDuration
 ) {
 
     @OptIn(ExperimentalCoroutinesApi::class)

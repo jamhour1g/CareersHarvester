@@ -24,13 +24,14 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.*
 import java.util.logging.Level
-import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
 
-class JobsDotPS() : AbstractJobsProvider(
+class JobsDotPS(expiryDuration: Duration = 3.hours) : AbstractJobsProvider(
     "Jobs.ps",
     "Ramallah",
     "https://www.jobs.ps/".toURI(),
-    1.minutes
+    expiryDuration
 ) {
 
     @OptIn(ExperimentalCoroutinesApi::class)
