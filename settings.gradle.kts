@@ -6,3 +6,6 @@ pluginManagement {
 }
 rootProject.name = "CareersHarvester"
 
+include("providers")
+include("util")
+include("core")
