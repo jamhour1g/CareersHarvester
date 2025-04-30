@@ -1,6 +1,7 @@
 # CareersHarvester
 
-CareersHarvester is a Kotlin-based job aggregation system that collects job postings from various providers and organizes them into a unified structure. The project is designed to be modular, extensible, and efficient, leveraging Kotlin coroutines and serialization for asynchronous operations and data handling.
+CareersHarvester is a Kotlin-based job aggregation system that collects job postings from various providers and organizes them into a unified structure.
+The project is designed to be modular, extensible, and efficient, leveraging Kotlin coroutines and serialization for asynchronous operations and data handling.
 
 ## Features
 
@@ -43,3 +44,16 @@ Provides utility classes and functions for logging, HTTP requests, and serializa
   - `LoggingUtils`: Configurable logging setup.
   - `HttpUtils`: Helper functions for making HTTP requests.
   - `Serializers`: Custom serializers for `URI`, `ZonedDateTime`, and `LocalDate`.
+
+# Logging
+Logging is configurable via environment variables:
+
+- `ENABLE_CONSOLE_LOGGING`: Set to true to enable console logging.
+- `ENABLE_FILE_LOGGING`: Set to true to enable file logging.
+
+Log files are stored in the logs/ directory.
+
+### Prerequisites
+- **Java Development Kit (JDK)**: Version 21 or later.
+- **Gradle**: Version 8.5 or later.
+- **Kotlin**: Version 2.0.20.
